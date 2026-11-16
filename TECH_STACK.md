@@ -2,7 +2,7 @@
 
 **Versi:** 1.0  
 **Tanggal:** 16 November 2026  
-**Status:** Draft untuk demo  
+**Status:** Accepted untuk demo  
 **Dokumen terkait:** [PRD.md](./PRD.md) · [ADR.md](./ADR.md)
 
 ---
@@ -29,18 +29,18 @@ Target demo: satu gardu, satu sensor arus satu fasa, satu door contact, satu kam
 | OS | Debian 13 (trixie) ARM64 | Raspberry Pi 5 |
 | Hardware | Raspberry Pi 5, 8 GB RAM | Storage SD card, sisa ±7 GB |
 | Node.js | 22.23.5 | Sudah terpasang |
-| pnpm | 10.9.9 | Sudah terpasang |
+| pnpm | via corepack | `corepack enable` (corepack 0.36.0) |
 | FFmpeg/ffprobe | 7.1.5 | Sudah terpasang |
-| Nuxt | 4.x latest stable | Vue + Vite + Nitro |
+| Nuxt | 4.6.4 | Vue + Vite + Nitro |
 | Vue | 3.x | Composition API + `<script setup>` |
 | TypeScript | 5.x | `strict: true` |
-| Drizzle ORM | latest stable | `drizzle-orm` + `drizzle-kit` |
+| Drizzle ORM | 0.45.4 | `drizzle-orm` + `drizzle-kit` |
 | Driver DB | `postgres` (postgres.js) | Pure JS, ARM64-friendly |
 | PostgreSQL | 17-alpine | Docker |
 | MinIO | latest stable, pin tag/digest | Docker |
 | MinIO Client | `mc` terbaru | Init bucket/CORS |
-| Tailwind CSS | 4.x | Via Nuxt UI |
-| Nuxt UI | 3.x | Komponen dashboard |
+| Tailwind CSS | 4.3.5 | Via Nuxt UI |
+| Nuxt UI | 4.12.0 | Komponen dashboard |
 | ECharts | latest stable | Grafik time-series |
 | Zod | latest stable | Validasi API + tipe |
 | AWS SDK | v3 | S3 client + presigner |
@@ -49,7 +49,7 @@ Target demo: satu gardu, satu sensor arus satu fasa, satu door contact, satu kam
 | Vitest | latest stable | Unit/integration test |
 | Playwright | latest stable | E2E opsional |
 
-**Aturan versioning:** commit `pnpm-lock.yaml`; pin image Docker dengan tag yang jelas, idealnya digest. Hindari `latest` tanpa pencatatan versi.
+**Aturan versioning:** install pnpm lewat `corepack enable`; commit `pnpm-lock.yaml`; pin image Docker dengan tag yang jelas, idealnya digest. Hindari `latest` tanpa pencatatan versi.
 
 ---
 
@@ -111,7 +111,7 @@ energy-monitoring/
 │  │  ├─ index.vue
 │  │  ├─ events/index.vue
 │  │  ├─ events/[id].vue
-│  │  └─ device.vue
+│  │  └─ settings.vue
 │  ├─ components/
 │  │  ├─ CurrentChart.vue
 │  │  ├─ CurrentGauge.vue
@@ -127,6 +127,7 @@ energy-monitoring/
 ├─ server/
 │  ├─ api/
 │  │  ├─ auth/{login,logout,me}.post/get.ts
+│  │  ├─ health.get.ts
 │  │  └─ v1/
 │  │     ├─ edge/
 │  │     │  ├─ heartbeat.post.ts
@@ -244,10 +245,10 @@ Gunakan singleton yang disimpan di `globalThis` saat development untuk menghinda
 | Tabel | Kolom utama | Index/Constraint |
 |---|---|---|
 | `sites` | `id uuid`, `code text`, `name text`, `address text`, `feeder text`, `created_at timestamptz` | unique `code` |
-| `devices` | `id uuid`, `site_id`, `serial`, `firmware`, `token_hash`, `last_seen_at`, `config jsonb`, `health jsonb`, `door_state text` | unique `serial`, index `last_seen_at` |
+| `devices` | `id uuid`, `site_id`, `serial`, `firmware`, `token_hash`, `last_seen_at`, `config jsonb`, `config_version int`, `health jsonb`, `door_state text` | unique `serial`, index `last_seen_at` |
 | `sensors` | `id uuid`, `device_id`, `key`, `kind`, `phase`, `unit`, `last_value double`, `last_ts timestamptz` | unique `(device_id, key)` |
 | `readings` | `sensor_id`, `ts timestamptz`, `value double precision`, `quality text` | PK `(sensor_id, ts)`, index `(sensor_id, ts desc)` |
-| `events` | `id uuid`, `event_uid text`, `device_id`, `site_id`, `sensor_id nullable`, `type`, `severity`, `action`, `occurred_at`, `ended_at`, `status`, `details jsonb`, `rule_id`, `rule_version int`, `confidence double`, `group_uid`, timestamps | unique `(device_id, event_uid)`, index `(occurred_at desc)`, `(status, occurred_at)` |
+| `events` | `id uuid`, `event_uid text`, `device_id`, `site_id`, `sensor_id nullable`, `type`, `severity`, `action`, `occurred_at timestamptz`, `received_at timestamptz`, `ended_at`, `duration_ms int`, `status`, `note text`, `acknowledged_at timestamptz`, `acknowledged_by uuid`, `resolved_at timestamptz`, `resolved_by uuid`, `details jsonb`, `rule_id`, `rule_version int`, `confidence double`, `group_uid`, timestamps | unique `(device_id, event_uid)`, index `(occurred_at desc)`, `(status, occurred_at)` |
 | `cameras` | `id uuid`, `device_id`, `key`, `name`, `enabled boolean` | unique `(device_id, key)` |
 | `recordings` | `id uuid`, `event_uid`, `event_id nullable`, `camera_id`, `object_key`, `thumbnail_key`, `size_bytes bigint`, `duration_ms int`, `sha256 text`, `status text`, `trigger_offset_ms int`, `started_at`, `ended_at`, `created_at` | unique `object_key`, index `event_uid`, `status` |
 | `recording_uploads` | `id uuid`, `recording_id`, `s3_upload_id`, `part_size int`, `total_parts int`, `expires_at`, `status` | unique `recording_id` |
@@ -258,9 +259,13 @@ Catatan:
 
 - Semua timestamp memakai `timestamptz` UTC.
 - `details` JSONB divalidasi dengan Zod sebelum insert.
-- Kolom milik edge dan kolom workflow aplikasi dipisahkan secara logika; update edge tidak boleh menimpa `status`.
+- Kolom milik edge dan kolom workflow aplikasi dipisahkan secara logika; update edge tidak boleh menimpa `status`, `note`, atau kolom workflow.
 - `readings` tanpa partisi untuk demo.
 - `recordings.event_id` nullable untuk korelasi tertunda.
+- `events.duration_ms` dihitung server dari selisih `DOOR_CLOSE` dan `DOOR_OPEN` dengan `group_uid` yang sama.
+- `events.received_at` diisi server; `occurred_at` berasal dari edge.
+- `devices.config_version` dinaikkan saat konfigurasi server berubah dan dikembalikan ke edge.
+- Device offline diturunkan dari `last_seen_at`; tidak ada baris event `DEVICE_OFFLINE`.
 
 ### 6.3 Query Time-Series
 
@@ -276,14 +281,17 @@ group by 1
 order by 1;
 ```
 
-Rentang dan bucket:
+Rentang dan bucket (target maksimal ±2.000 titik per series):
 
-| Range | Bucket |
-|---|---|
-| ≤1 jam | 2–5 detik |
-| ≤6 jam | 10–30 detik |
-| ≤24 jam | 1 menit |
-| >24 jam | 5 menit |
+| Range | Bucket | Perkiraan titik |
+|---|---|---|
+| ≤1 jam | 5 detik | 720 |
+| ≤6 jam | 30 detik | 720 |
+| ≤24 jam | 1 menit | 1.440 |
+| ≤7 hari | 10 menit | 1.008 |
+| ≤30 hari | 30 menit | 1.440 |
+
+API memilih bucket terkecil yang membuat jumlah titik ≤2.000 untuk rentang yang diminta.
 
 ### 6.4 Migrasi dan Seed
 
@@ -337,6 +345,7 @@ Response berisi sensor, camera, threshold, dan upload policy:
 ```json
 {
   "device_id": "...",
+  "config_version": 1,
   "sensors": [
     { "key": "CT1-R", "kind": "current", "phase": "R", "unit": "A" }
   ],
@@ -401,7 +410,7 @@ Request:
 {
   "events": [
     {
-      "event_uid": "9f2c...",
+      "event_uid": "evt-20261116-0001",
       "action": "START",
       "type": "ANOMALY_CURRENT_DROP",
       "severity": "critical",
@@ -425,7 +434,7 @@ Door open/close memakai `group_uid` yang sama:
 
 ```json
 {
-  "event_uid": "...",
+  "event_uid": "evt-20261116-0002",
   "action": "START",
   "type": "DOOR_OPEN",
   "severity": "warning",
@@ -439,12 +448,25 @@ Door open/close memakai `group_uid` yang sama:
 Aturan:
 
 - Maks 100 event/batch.
-- `(device_id, event_uid)` unik.
+- `event_uid` wajib cocok `^[A-Za-z0-9_-]{8,64}$`.
+- `(device_id, event_uid)` unik; duplikat dibalas `200` dengan `duplicated` bertambah, bukan `409`.
 - `START` membuat event `open`.
 - `END`/`UPDATE` mengisi `ended_at` dan menggabungkan `details`, tanpa menimpa `status`.
 - Event `END` harus self-contained; jika `START` tidak pernah diterima, event tetap bisa dibuat.
+- `received_at` diisi server, `occurred_at` dari edge.
+- Durasi door dihitung server saat `DOOR_CLOSE` dan disimpan di `duration_ms`.
 - Emit SSE `event.created` / `event.updated`.
 - Link recording yang memiliki `event_uid` sama.
+
+Response:
+
+```json
+{
+  "accepted": 1,
+  "duplicated": 0,
+  "server_time": "2026-11-16T03:00:00.000Z"
+}
+```
 
 #### `POST /api/v1/edge/recordings`
 
@@ -452,7 +474,7 @@ Request:
 
 ```json
 {
-  "event_uid": "9f2c...",
+  "event_uid": "evt-20261116-0001",
   "camera": "CAM-1",
   "filename": "clip.mp4",
   "size_bytes": 768000,
@@ -484,7 +506,7 @@ Validasi:
 - `duration_ms` ≤ 30.000.
 - `sha256` 64 hex.
 - `trigger_offset_ms` 0..duration.
-- `event_uid` boleh belum ada di tabel event.
+- `event_uid` wajib valid sesuai `^[A-Za-z0-9_-]{8,64}$`, tetapi boleh belum ada di tabel event.
 
 #### `POST /api/v1/edge/recordings/:id/parts`
 
@@ -531,7 +553,7 @@ Response:
 
 #### `GET /api/v1/edge/recordings/:id`
 
-Mengembalikan status, `total_parts`, part yang sudah diterima, dan `expires_at` untuk resume.
+Mengembalikan status upload, `total_parts`, part yang sudah diterima, dan `expires_at`. Resume tidak didukung; edge harus memulai sesi baru jika upload terputus.
 
 #### `POST /api/v1/edge/recordings/:id/abort`
 
@@ -546,13 +568,27 @@ Membatalkan multipart upload di S3 dan menandai recording `failed`.
 | GET | `/api/auth/me` | `{ id, email, name, role }` |
 | GET | `/api/v1/dashboard` | Ringkasan live |
 | GET | `/api/v1/readings?from&to&bucket` | `{ points: [...] }` |
-| GET | `/api/v1/events?status&type&from&to&cursor` | `{ items, nextCursor }` |
+| GET | `/api/v1/events?status&type&severity&from&to&cursor` | `{ items, nextCursor }` |
 | GET | `/api/v1/events/:id` | Event + recording + konteks |
 | PATCH | `/api/v1/events/:id` | Update status/catatan |
 | GET | `/api/v1/recordings/:id/playback` | 302 presigned GET |
 | GET | `/api/v1/recordings/:id/thumbnail` | 302 presigned GET |
 | GET | `/api/v1/devices` | Health device |
 | GET | `/api/v1/stream` | SSE |
+| GET | `/api/health` | `{ db, minio }` tanpa auth |
+
+`PATCH /api/v1/events/:id` menerima:
+
+```json
+{
+  "status": "acknowledged",
+  "note": "Sudah dicek, arus normal kembali"
+}
+```
+
+Transisi yang diizinkan: `open → acknowledged`, `acknowledged → resolved`, `acknowledged → false_positive`. `resolved`/`false_positive` bersifat final; reopen tidak termasuk demo. `acknowledged_by`/`resolved_by` diisi dari session user dan `acknowledged_at`/`resolved_at` diisi server. Setiap perubahan dicatat ke `audit_logs`.
+
+`GET /api/health` tidak memerlukan auth; mengembalikan `200` jika DB dan MinIO sehat, `503` jika salah satu gagal, tanpa membocorkan detail secret.
 
 ### 7.4 Error dan Retry
 
@@ -570,13 +606,15 @@ Kode yang disarankan:
 
 | HTTP | Arti | Edge |
 |---|---|---|
-| 200/201 | Sukses | Lanjut |
+| 200/201 | Sukses | Lanjut; cek `accepted`/`duplicated` |
 | 401 | Token salah | Perbaiki konfigurasi, jangan retry |
-| 409 | Duplikat | Anggap sukses |
+| 409 | Konflik state (mis. upload sudah selesai) | Cek status, jangan retry buta |
 | 422 | Validasi gagal | Jangan retry |
 | 429 | Rate limit | Backoff |
 | 500/503 | Server error | Backoff |
 | 507 | Storage penuh | Hentikan video, retry nanti |
+
+Duplikat telemetry/event bukan error: server membalas `200` dengan `accepted` dan `duplicated`.
 
 ---
 
@@ -623,8 +661,9 @@ export const s3Public = new S3Client({
 | Presigned playback TTL | 5 menit |
 | Upload session TTL | 24 jam |
 | Concurrency edge | 1–2 part |
+| Resume | Tidak didukung (status + abort saja) |
 
-Klip <1 MB akan menjadi satu part. Multipart tetap dipakai agar jalur kode sama untuk file lebih besar.
+Klip <1 MB akan menjadi satu part. Multipart tetap dipakai agar jalur kode sama untuk file lebih besar; upload yang terputus diulang dengan sesi baru.
 
 ### 8.3 Alur Finalisasi
 
@@ -683,7 +722,7 @@ ffmpeg -y -ss 5 -i input.mp4 -frames:v 1 -vf scale=640:-2 -q:v 5 thumb.jpg
 
 Bucket CORS minimal:
 
-- Origin: `http://192.168.1.112:3000`
+- Origin: `http://192.168.1.112:3000`, `http://localhost:3000`
 - Methods: `GET`, `HEAD`
 - Headers: `Range`, `Content-Type`
 
@@ -768,7 +807,7 @@ Tanpa queue eksternal. Gunakan:
 | Data | Default | Aksi |
 |---|---|---|
 | `readings` | 30 hari | Hapus |
-| `events` | 90 hari | Hapus (kecuali di-pin) |
+| `events` | 90 hari | Hapus |
 | `recordings` | 7 hari | Hapus object + thumbnail + row |
 | `recording_uploads` | 24 jam | Abort multipart + hapus |
 | `audit_logs` | 90 hari | Hapus |
@@ -777,15 +816,16 @@ Tanpa queue eksternal. Gunakan:
 ### 11.2 Disk Guard
 
 - Hitung total `recordings.size_bytes`.
-- Jika >1,5 GB, hapus recording tertua yang tidak di-pin.
+- Jika >1,5 GB, hapus recording tertua.
 - Cek `fs.statfs` pada direktori MinIO.
 - Jika free <1 GB, tolak recording baru dengan `507`.
+- Hapus object MinIO lebih dulu; jika gagal, jangan hapus baris dan ulangi pada siklus berikutnya.
 - Tampilkan storage usage di dashboard.
 - Batasi ukuran log Docker/journal.
 
 ### 11.3 Backup
 
-- `pg_dump -Fc` harian.
+- `pg_dump -Fc` harian dari container: `docker compose exec -T db pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB" > "$BACKUP_DIR/db-$(date +%F).dump"`.
 - `mc mirror` bucket ke storage eksternal/network.
 - Simpan minimal 7 backup terakhir.
 - Uji restore sebelum demo.
@@ -808,6 +848,7 @@ Ketentuan:
 
 - `restart: unless-stopped` untuk `db` dan `minio`.
 - Healthcheck PostgreSQL dan MinIO.
+- Kredensial Postgres/MinIO diambil dari `.env` (`POSTGRES_*`, `MINIO_ROOT_*`); `S3_ACCESS_KEY`/`S3_SECRET_KEY` harus sama dengan kredensial MinIO.
 - Logging `json-file` dengan `max-size: 10m`, `max-file: 3`.
 - Bind mount data agar mudah dibackup dan dipindah ke SSD.
 - `.env` tidak di-commit.
@@ -864,9 +905,14 @@ Batasi `NODE_OPTIONS=--max-old-space-size=2048` jika perlu.
 | Variable | Contoh | Wajib | Catatan |
 |---|---|---|---|
 | `DATABASE_URL` | `postgres://energy:pass@127.0.0.1:5432/energy_monitoring` | Ya | Server-side |
+| `NODE_ENV` | `production` | Ya | `development` saat dev |
+| `HOST` | `0.0.0.0` | Ya | Bind Nuxt |
+| `PORT` | `3000` | Ya | Port Nuxt |
 | `POSTGRES_DB` | `energy_monitoring` | Ya | Docker Compose |
 | `POSTGRES_USER` | `energy` | Ya | Docker Compose |
 | `POSTGRES_PASSWORD` | `change-me` | Ya | Jangan commit |
+| `MINIO_ROOT_USER` | `minioadmin` | Ya | Docker Compose |
+| `MINIO_ROOT_PASSWORD` | `change-me` | Ya | Jangan commit |
 | `SESSION_SECRET` | `32+ random chars` | Ya | Cookie sealing |
 | `ADMIN_EMAIL` | `admin@demo.local` | Ya | Seed |
 | `ADMIN_PASSWORD` | `change-me` | Ya | Seed |
@@ -884,6 +930,10 @@ Batasi `NODE_OPTIONS=--max-old-space-size=2048` jika perlu.
 | `MAX_VIDEO_BYTES` | `5242880` | Tidak | 5 MB/file |
 | `MAX_VIDEO_DURATION_MS` | `30000` | Tidak | 30 detik |
 | `READING_RETENTION_DAYS` | `30` | Tidak | Default 30 |
+| `DEVICE_OFFLINE_SECONDS` | `30` | Tidak | Ambang offline dari `last_seen_at` |
+| `STORAGE_WARN_PCT` | `80` | Tidak | Warning storage |
+| `BACKUP_DIR` | `./backups` | Tidak | Folder backup |
+| `BACKUP_KEEP` | `7` | Tidak | Jumlah backup disimpan |
 | `API_URL` | `http://127.0.0.1:3000` | Simulator | |
 | `NUXT_PUBLIC_APP_URL` | `http://192.168.1.112:3000` | Ya | Link absolut |
 
@@ -960,23 +1010,28 @@ Tidak membuat reading/event/video.
 
 ### 15.1 Unit
 
-- Zod schemas valid/invalid.
+- Zod schemas valid/invalid, termasuk format `event_uid`.
 - Hash token, scrypt password.
 - Object key dan thumbnail key.
 - Perhitungan part upload.
+- Pemilihan bucket time-series agar ≤2.000 titik.
 - Aturan retensi/disk guard.
 - Format error.
 
 ### 15.2 Integration
 
-- Telemetry batch + duplikat.
+- Telemetry batch + duplikat (`200` dengan `accepted`/`duplicated`).
 - Event START/END/UPDATE + status preservation.
-- Door open/close + durasi.
+- Duplikat event (`200` dengan `duplicated`), `event_uid` invalid → `422`.
+- Door open/close + durasi server-side.
+- PATCH event: transisi status valid, `note`, `acknowledged_by`, audit log.
 - Recording sebelum event → link saat event masuk.
 - Complete upload + sha256 mismatch + ffprobe gagal.
-- Retention menghapus object + row.
+- Retention menghapus object + row; object gagal dihapus tidak menghapus row.
 - Auth device 401/200.
 - Session user 401/200.
+- `/api/health` 200 saat DB/MinIO sehat, 503 saat salah satu gagal.
+- Device offline diturunkan dari `last_seen_at` tanpa event.
 
 Gunakan database test terpisah, misalnya `energy_monitoring_test`, dan reset schema per suite.
 
@@ -1043,6 +1098,8 @@ Gunakan database test terpisah, misalnya `energy_monitoring_test`, dan reset sch
 - Tanpa OTA/config push ke edge.
 - Kualitas video rendah (720p/<1 MB) untuk demo.
 - Tanpa mTLS/HMAC device; hanya bearer token.
+- Tanpa resume upload; upload terputus diulang dari awal.
+- Tanpa pin evidence; retensi berjalan otomatis.
 
 ---
 
@@ -1068,6 +1125,7 @@ Gunakan database test terpisah, misalnya `energy_monitoring_test`, dan reset sch
 - [ ] Set IP static/DHCP reservation `192.168.1.112`.
 - [ ] Pastikan NTP aktif.
 - [ ] Salin `.env.example` ke `.env` dan isi secret.
+- [ ] `corepack enable`.
 - [ ] `docker compose up -d db minio`.
 - [ ] Jalankan `minio-init`; pastikan bucket `recordings` private.
 - [ ] `pnpm install`.
@@ -1078,9 +1136,10 @@ Gunakan database test terpisah, misalnya `energy_monitoring_test`, dan reset sch
 - [ ] `pnpm sim`; pastikan reading masuk.
 - [ ] `pnpm sim:drop`; pastikan event + video `ready`.
 - [ ] `pnpm sim:door`; pastikan door log + video.
+- [ ] `pnpm sim:offline`; pastikan device offline dari `last_seen_at`.
 - [ ] Cek playback dari browser lain di LAN.
 - [ ] Uji retensi/disk guard.
-- [ ] Setup `pg_dump` harian + backup MinIO.
+- [ ] Setup `pg_dump` harian dari container + backup MinIO.
 - [ ] `pnpm build`; jalankan systemd.
 - [ ] Batasi firewall: 3000/9000/9001 LAN; 5432 lokal.
 - [ ] Dokumentasikan demo di `docs/demo.md`.

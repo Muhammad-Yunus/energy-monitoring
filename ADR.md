@@ -63,16 +63,18 @@
 
 - **Status:** Accepted
 - **Tanggal:** 16 November 2026
-- **Konteks:** Edge harus mengunggah video tanpa membebani proses Nitro. Klip demo <1 MB, tetapi mekanisme harus siap untuk file lebih besar dan resume.
-- **Keputusan:** API membuat S3 multipart upload, mengembalikan `upload_id` dan `part_size`, lalu edge mengunggah part langsung ke MinIO memakai presigned URL.
+- **Konteks:** Edge harus mengunggah video tanpa membebani proses Nitro. Klip demo <1 MB dan selalu menjadi satu part.
+- **Keputusan:** API membuat S3 multipart upload, mengembalikan `upload_id` dan `part_size`, lalu edge mengunggah part langsung ke MinIO memakai presigned URL. Demo menyediakan status upload dan abort; resume tidak termasuk scope.
 - **Konsekuensi:**
-  - Positif: payload video tidak melewati Node, memory aman, resume didukung, cocok untuk file besar.
+  - Positif: payload video tidak melewati Node, memory aman, jalur kode sama untuk file lebih besar.
   - Negatif: edge harus bisa menjangkau endpoint MinIO; butuh URL signing dengan host yang benar; ETag harus dikirim saat complete.
+  - Negatif: upload yang terputus harus diulang dari awal; tidak ada resume part.
   - Netral: untuk klip <5 MB, multipart hanya memiliki satu part.
 - **Alternatif yang ditolak:**
   - Proxy chunk melalui Nitro: berisiko memory/body limit dan membebani Pi.
   - tus server: menambah komponen dan protokol baru.
   - Upload langsung dengan kredensial S3 di edge: distribusi secret tidak aman.
+  - Resume multipart: menambah state dan pengujian yang tidak dibutuhkan klip <1 MB.
 
 ---
 
@@ -190,18 +192,19 @@
 - **Keputusan:**
   - Retensi video 7 hari.
   - Cap total video 1,5 GB.
-  - Hapus recording tertua yang tidak di-pin jika cap terlampaui.
+  - Hapus recording tertua jika cap terlampaui.
   - Tolak recording baru dengan HTTP `507` jika free disk <1 GB.
   - Retensi reading 30 hari, event 90 hari.
   - Batasi log Docker/journal.
 - **Konsekuensi:**
   - Positif: storage terbatas dan demo tetap stabil.
-  - Negatif: evidence lama bisa hilang; perlu fitur pin untuk kasus penting.
+  - Negatif: evidence lama bisa hilang otomatis; tidak ada mekanisme pin pada demo.
   - Negatif: SD card tetap berisiko aus; backup ke eksternal tetap disarankan.
 - **Alternatif yang ditolak:**
   - Tanpa retensi: disk cepat penuh.
   - Retensi 30 hari: terlalu berisiko di SD card 7 GB.
   - Hapus semua event saat disk penuh: kehilangan metadata penting.
+  - Pin evidence: menambah UI dan aturan penghapusan yang tidak diperlukan demo.
 
 ---
 
@@ -316,7 +319,7 @@
 - **Status:** Accepted
 - **Tanggal:** 16 November 2026
 - **Konteks:** Dashboard internal, data-dense, butuh tabel, badge, modal, grafik time-series, dan responsif.
-- **Keputusan:** Nuxt UI (Tailwind CSS) untuk komponen, ECharts untuk grafik, `@vueuse/nuxt` untuk SSE/utilitas.
+- **Keputusan:** Nuxt UI 4.x (Tailwind CSS 4.x) untuk komponen, ECharts untuk grafik, `@vueuse/nuxt` untuk SSE/utilitas.
 - **Konsekuensi:**
   - Positif: cepat dibangun, konsisten, tema terang/gelap, komponen siap pakai.
   - Negatif: bundle ECharts cukup besar; gunakan import modular dan `ClientOnly`.
@@ -359,6 +362,7 @@
   - Video: `recordings/{yyyy}/{mm}/{dd}/{event_uid}/{recording_id}.mp4`
   - Thumbnail: `thumbnails/{yyyy}/{mm}/{dd}/{recording_id}.jpg`
   - Object immutable; upload baru memakai key baru.
+  - `event_uid` divalidasi `^[A-Za-z0-9_-]{8,64}$` sebelum dipakai di key.
 - **Konsekuensi:**
   - Positif: audit trail jelas, cache aman, lifecycle per prefix mudah.
   - Negatif: key panjang; orphan object perlu dibersihkan.

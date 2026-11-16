@@ -3,7 +3,7 @@
 **Nama produk:** Energy Monitoring (Demo Single Gardu)  
 **Versi:** 1.0  
 **Tanggal:** 16 November 2026  
-**Status:** Draft untuk demo  
+**Status:** Accepted untuk demo  
 **Dokumen terkait:** [ADR.md](./ADR.md) · [TECH_STACK.md](./TECH_STACK.md)
 
 ---
@@ -67,6 +67,8 @@ Fitur berikut **tidak** termasuk dalam demo fase pertama:
 - Mobile app native.
 - High availability, clustering, dan Redis.
 - HTTPS produksi (demo berjalan di LAN dengan HTTP).
+- Resume upload setelah koneksi terputus; demo hanya menyediakan status dan abort, retry memulai upload baru.
+- Pin/retensi evidence manual di luar kebijakan retensi otomatis.
 
 ---
 
@@ -88,11 +90,11 @@ Demo hanya memiliki satu akun admin yang di-seed. Role disimpan di tabel `users`
 - Hardware: Raspberry Pi 5, RAM 8 GB, Debian 13 ARM64.
 - Storage: SD card, sisa ±7 GB. Tidak ada SSD eksternal pada fase demo.
 - Jaringan: LAN, IP `192.168.1.112` (disarankan DHCP reservation/static).
-- Node.js 22.23.5, pnpm 10.9.9, FFmpeg 7.1.5 tersedia.
+- Node.js 22.23.5 dan FFmpeg 7.1.5 tersedia; pnpm dipasang via `corepack enable`.
 - Docker Engine + Compose plugin akan di-install.
 - PostgreSQL dan MinIO berjalan di Docker; Nuxt berjalan native.
 - Edge/simulator dapat menjangkau `http://192.168.1.112:3000` dan `http://192.168.1.112:9000`.
-- Video dari edge berformat MP4 H.264, 10 detik, 720p, target <1 MB.
+- Video dari edge berformat MP4 H.264, 10 detik, 720p, tanpa audio, target <1 MB.
 - Waktu server dan edge disinkronkan dengan NTP.
 - Browser modern (Chrome/Firefox/Safari terbaru).
 - Demo berjalan di LAN tanpa TLS; tidak diekspos ke internet.
@@ -144,7 +146,7 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 | FR-01 | Login admin | P0 | Admin dapat login, session cookie aktif, halaman terproteksi |
 | FR-02 | Auth device | P0 | Request edge tanpa token valid ditolak 401 |
 | FR-03 | Heartbeat | P0 | `last_seen_at` diperbarui; balasan berisi server time dan config |
-| FR-04 | Config edge | P0 | Edge mendapat daftar sensor, camera, threshold, dan upload policy |
+| FR-04 | Config edge | P0 | Edge mendapat daftar sensor, camera, threshold, upload policy, dan `config_version` |
 | FR-05 | Ingest telemetry | P0 | Batch reading tervalidasi dan tersimpan; reading terbaru tampil ≤2 detik |
 | FR-06 | Idempotensi telemetry | P0 | Reading dengan `(sensor_id, ts)` sama tidak menghasilkan duplikat |
 | FR-07 | Ingest event anomali | P0 | Event START/END/UPDATE tersimpan; status investigasi tidak tertimpa edge |
@@ -152,7 +154,7 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 | FR-09 | Idempotensi event | P0 | `(device_id, event_uid)` unik; retry tidak menggandakan event |
 | FR-10 | Sesi recording | P0 | Edge dapat membuat sesi upload dengan metadata video |
 | FR-11 | Presigned multipart | P0 | Edge mengunggah part langsung ke MinIO dan mendapat ETag |
-| FR-12 | Resume/abort upload | P1 | Upload terputus dapat dilanjutkan atau dibatalkan |
+| FR-12 | Status dan abort upload | P0 | Edge dapat menanyakan status upload dan membatalkan sesi; multipart di-abort |
 | FR-13 | Finalisasi video | P0 | Ukuran, SHA-256, dan ffprobe divalidasi; thumbnail dibuat; status `ready` |
 | FR-14 | Playback video | P0 | Video hanya dapat diputar oleh user login lewat signed URL |
 | FR-15 | Dashboard live | P0 | Reading, event, dan status recording muncul via SSE tanpa refresh |
@@ -161,10 +163,10 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 | FR-18 | Event detail | P0 | Grafik konteks, detail rule, video, door timeline, catatan |
 | FR-19 | Workflow event | P0 | Acknowledge, resolve, false positive, dan catatan tersimpan |
 | FR-20 | Door log | P0 | Riwayat open/close, durasi, dan video terkait |
-| FR-21 | Device health | P1 | Online/offline berdasarkan `last_seen_at`; storage usage terlihat |
+| FR-21 | Device health | P0 | Online/offline berdasarkan `last_seen_at`; storage usage terlihat |
 | FR-22 | Retensi & disk guard | P0 | Data lama dihapus; video dibatasi; event tetap tersimpan |
 | FR-23 | Simulator API | P0 | Generate reading/event random, upload video, memanggil API nyata |
-| FR-24 | Audit log | P1 | Login, perubahan status event, dan akses video tercatat |
+| FR-24 | Audit log | P0 | Login, perubahan status event, dan akses video tercatat |
 | FR-25 | Dokumentasi API | P0 | Kontrak edge dan contoh payload tersedia di repo |
 
 ---
@@ -175,12 +177,12 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 |---|---|---|
 | NFR-01 | Latensi ingest | Reading terlihat di dashboard ≤2 detik setelah diterima |
 | NFR-02 | Throughput | 1 device, 1 reading/2 detik, batch maks 1.000 reading |
-| NFR-03 | Keandalan | Retry edge tidak menggandakan data; upload dapat resume |
+| NFR-03 | Keandalan | Retry edge tidak menggandakan data; upload gagal dapat di-abort dan diulang |
 | NFR-04 | Integritas video | SHA-256 dan ffprobe divalidasi sebelum `ready` |
 | NFR-05 | Storage | Video maks 1,5 GB total, retensi 7 hari, warning pada 80% |
 | NFR-06 | Resource | RAM total stack ≤2,5 GB saat idle; CPU wajar untuk Pi 5 |
 | NFR-07 | Keamanan | Token device di-hash; bucket private; signed URL; session cookie |
-| NFR-08 | Kompatibilitas | MP4 H.264/AAC, playback di Chrome/Firefox/Safari |
+| NFR-08 | Kompatibilitas | MP4 H.264 tanpa audio, playback di Chrome/Firefox/Safari |
 | NFR-09 | Usability | UI bahasa Indonesia, responsif, status warna konsisten |
 | NFR-10 | Maintainability | TypeScript strict, validasi Zod, migrasi Drizzle, dokumentasi |
 | NFR-11 | Observability | Health check DB/MinIO, status device, log terbatas |
@@ -193,10 +195,10 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 | Entitas | Fungsi |
 |---|---|
 | `sites` | Data gardu: kode, nama, alamat, penyulang, koordinat |
-| `devices` | Edge device: serial, firmware, token hash, last seen, config, health, door state |
+| `devices` | Edge device: serial, firmware, token hash, last seen, config, config version, health, door state |
 | `sensors` | Sensor arus/door: key, kind, phase, unit, last value |
 | `readings` | Time-series arus: sensor, timestamp, nilai, kualitas |
-| `events` | Anomali listrik dan door event |
+| `events` | Anomali listrik dan door event, termasuk status tindak lanjut, `duration_ms`, dan catatan |
 | `cameras` | Kamera CCTV yang terhubung ke device |
 | `recordings` | Metadata video evidence dan relasinya ke event |
 | `recording_uploads` | Sesi S3 multipart dan status upload |
@@ -212,22 +214,24 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 | `ANOMALY_ZERO_CURRENT` | Arus mendekati nol |
 | `DOOR_OPEN` | Pintu panel terbuka |
 | `DOOR_CLOSE` | Pintu panel tertutup |
-| `DEVICE_OFFLINE` | Event turunan aplikasi saat heartbeat berhenti |
+
+Device offline **bukan** tipe event. Status offline diturunkan dari `devices.last_seen_at` terhadap ambang heartbeat, sehingga tidak ada event `DEVICE_OFFLINE` yang disimpan.
 
 ### 10.2 Status dan Severity
 
 - Severity event: `info`, `warning`, `critical`.
-- Status event: `open`, `acknowledged`, `resolved`, `false_positive`.
+- Status event: `open`, `acknowledged`, `resolved`, `false_positive`, dengan `acknowledged_at`, `acknowledged_by`, `resolved_at`, `resolved_by`, dan `note`.
 - Status recording: `pending`, `uploading`, `uploaded`, `processing`, `ready`, `failed`.
-- Status device: `online`, `offline`, `degraded`.
+- Status device: `online`, `offline` (diturunkan dari `last_seen_at`, bukan disimpan sebagai event).
 
 ### 10.3 Aturan Korelasi
 
-- Event memakai `event_uid` unik per device.
+- Event memakai `event_uid` unik per device, divalidasi `^[A-Za-z0-9_-]{8,64}$`.
 - Video menyimpan `event_uid` dan `event_id` nullable.
 - Video boleh datang sebelum event; korelasi dilakukan saat event masuk.
 - Door open/close memakai `group_uid` yang sama untuk satu sesi.
-- Durasi pintu dihitung saat `DOOR_CLOSE` diterima.
+- Durasi pintu dihitung server saat `DOOR_CLOSE` diterima dan disimpan di `events.duration_ms`.
+- Semua waktu kejadian disimpan sebagai `occurred_at` (UTC) dan waktu terima server sebagai `received_at` (UTC).
 
 ---
 
@@ -238,23 +242,24 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 | Method | Path | Fungsi |
 |---|---|---|
 | POST | `/api/v1/edge/heartbeat` | Status device dan sinkronisasi waktu |
-| GET | `/api/v1/edge/config` | Konfigurasi sensor, camera, threshold |
+| GET | `/api/v1/edge/config` | Konfigurasi sensor, camera, threshold, upload policy, `config_version` |
 | POST | `/api/v1/edge/telemetry` | Batch reading |
 | POST | `/api/v1/edge/events` | Batch event anomali/door |
 | POST | `/api/v1/edge/recordings` | Membuat sesi upload |
 | POST | `/api/v1/edge/recordings/:id/parts` | Presigned URL per part |
 | POST | `/api/v1/edge/recordings/:id/complete` | Finalisasi upload |
-| GET | `/api/v1/edge/recordings/:id` | Status/resume upload |
+| GET | `/api/v1/edge/recordings/:id` | Status upload |
 | POST | `/api/v1/edge/recordings/:id/abort` | Membatalkan upload |
 
 Ketentuan:
 
 - Auth: `Authorization: Bearer <device_token>`.
-- Telemetry: maks 1.000 reading per batch.
-- Event: maks 100 event per batch.
+- Telemetry: maks 1.000 reading per batch; nilai arus dalam ampere (`A`).
+- Event: maks 100 event per batch; `event_uid` divalidasi `^[A-Za-z0-9_-]{8,64}$`.
 - Video: maks 5 MB per file, durasi maks 30 detik.
 - Part size 5 MiB; klip <1 MB akan menjadi satu part.
-- Retry: `2xx` sukses, `409` duplikat dianggap sukses, `422` jangan retry, `429/5xx` backoff.
+- Duplikat telemetry/event dibalas `200` dengan jumlah `accepted` dan `duplicated`, bukan `409`.
+- Retry: `2xx` sukses, `422` jangan retry, `429/5xx` backoff.
 
 ### 11.2 User API
 
@@ -265,13 +270,16 @@ Ketentuan:
 | GET | `/api/auth/me` | Session aktif |
 | GET | `/api/v1/dashboard` | Ringkasan dashboard |
 | GET | `/api/v1/readings` | Histori arus |
-| GET | `/api/v1/events` | Inbox event |
+| GET | `/api/v1/events` | Inbox event (filter tipe/severity/status, cursor) |
 | GET | `/api/v1/events/:id` | Detail event |
-| PATCH | `/api/v1/events/:id` | Update status/catatan |
+| PATCH | `/api/v1/events/:id` | Update status/catatan (`status`, `note`) |
 | GET | `/api/v1/recordings/:id/playback` | Redirect ke presigned video |
 | GET | `/api/v1/recordings/:id/thumbnail` | Redirect ke thumbnail |
 | GET | `/api/v1/devices` | Status device |
 | GET | `/api/v1/stream` | SSE live |
+| GET | `/api/health` | Health check DB/MinIO (tanpa auth) |
+
+`PATCH /api/v1/events/:id` menerima `status` (`acknowledged`, `resolved`, `false_positive`) dan `note` opsional. Transisi status divalidasi; `acknowledged_by`/`resolved_by` diisi dari session user.
 
 Format error konsisten:
 
@@ -294,11 +302,10 @@ Format error konsisten:
 | Halaman | Isi |
 |---|---|
 | Login | Email/password, redirect ke dashboard |
-| Overview | Arus terakhir, status device, door state, anomali aktif, event hari ini, storage |
-| Site detail | Grafik live satu fasa, range histori, event terbaru, door timeline, video |
-| Events | Inbox dengan filter, badge severity/status, pagination |
+| Dashboard | Arus terakhir, grafik live satu fasa, range histori, status device, door state, anomali aktif, event hari ini, event terbaru, door timeline, video, storage |
+| Events | Inbox dengan filter tipe/severity/status, badge severity/status, pagination |
 | Event detail | Grafik ±10 menit, detail rule, video, door timeline, aksi dan catatan |
-| Device/Settings | Last seen, firmware, token, threshold, retensi, storage |
+| Settings | Last seen, firmware, config version, threshold, retensi, storage |
 
 ### 12.2 Perilaku
 
@@ -325,15 +332,14 @@ Format error konsisten:
 
 Aturan disk guard:
 
-- Jika total video >1,5 GB, hapus recording tertua yang tidak di-pin.
+- Jika total video >1,5 GB, hapus recording tertua.
 - Jika free disk <1 GB, tolak recording baru dengan `507` dan tampilkan warning.
-- Video yang di-pin untuk investigasi tidak boleh dihapus otomatis.
-- Hapus object MinIO dan baris database secara berurutan; jika object gagal dihapus, catat untuk retry.
+- Hapus object MinIO lebih dulu, lalu baris database. Jika object gagal dihapus, jangan hapus baris dan catat untuk retry pada siklus retensi berikutnya.
 - Batasi log Docker dan journal systemd agar SD card tidak penuh.
 
 Backup:
 
-- `pg_dump` harian ke folder backup.
+- `pg_dump` harian dari dalam container `db` (`docker compose exec -T db pg_dump -Fc ...`) ke folder backup.
 - Salin backup ke storage eksternal/network bila tersedia.
 - Uji restore minimal sekali sebelum demo.
 
@@ -349,7 +355,7 @@ Backup:
 4. Trigger `current-drop`; event critical muncul dan video dapat diputar.
 5. Trigger `door`; event open/close, durasi, dan video muncul.
 6. Acknowledge dan resolve event.
-7. Hentikan simulator; device berubah offline setelah 30 detik.
+7. Jalankan `pnpm sim:offline` atau hentikan simulator; device berubah offline setelah 30 detik.
 8. Tunjukkan storage usage dan retensi.
 
 ### 14.2 Checklist Penerimaan
@@ -358,11 +364,13 @@ Backup:
 - [ ] Event muncul via SSE tanpa refresh.
 - [ ] Video 10 detik/720p/<1 MB dapat diputar di browser.
 - [ ] Event START dan END ter-update tanpa duplikasi.
-- [ ] Retry batch/event/part tidak menggandakan data.
-- [ ] Upload video dapat resume setelah koneksi terputus.
+- [ ] Retry batch/event/part tidak menggandakan data; duplikat dilaporkan lewat `duplicated`.
+- [ ] Upload dapat di-abort dan status sesi upload terlihat.
 - [ ] Video tidak dapat diakses tanpa login/signed URL.
-- [ ] Device offline terdeteksi.
+- [ ] Device offline terdeteksi dari `last_seen_at` tanpa membuat event palsu.
 - [ ] Retensi menghapus data lama dan storage usage terlihat.
+- [ ] Acknowledge/resolve tercatat di audit log.
+- [ ] `/api/health` melaporkan status DB dan MinIO.
 - [ ] Dashboard dapat dipakai dari HP di LAN.
 
 ### 14.3 Metrik Keberhasilan Demo

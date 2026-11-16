@@ -89,6 +89,8 @@ Yang **tidak masuk**:
 - Mobile app.
 - Redis, queue eksternal, TimescaleDB, partisi time-series.
 - HTTPS produksi.
+- Resume upload setelah koneksi terputus; demo hanya status + abort.
+- Pin/retensi evidence manual di luar retensi otomatis.
 
 Jangan mengerjakan item di daftar “tidak masuk” meskipun terlihat mudah atau menarik.
 
@@ -142,7 +144,7 @@ Semua detail lengkap ada di `TECH_STACK.md`. Ringkasan yang wajib dipegang:
 - **Database:** PostgreSQL 17 + Drizzle ORM + `postgres.js`. Migrasi via `drizzle-kit`.
 - **Storage video:** MinIO, bucket private, presigned S3 multipart. Jangan simpan video di PostgreSQL.
 - **Endpoint S3:** internal `127.0.0.1:9000` untuk operasi server; public `192.168.1.112:9000` untuk presign.
-- **Realtime:** SSE dengan in-memory event bus. Tanpa Redis, tanpa WebSocket.
+- **Realtime:** SSE dengan in-memory event bus. Tanpa Redis, tanpa WebSocket. Polling 5 detik hanya fallback saat SSE terputus.
 - **Time-series:** tabel `readings` biasa, tanpa Timescale/partisi. Downsampling memakai `date_bin`.
 - **Auth user:** sealed session cookie (`h3` `useSession`) + scrypt. `secure=false` hanya untuk demo HTTP LAN.
 - **Auth device:** bearer token, disimpan sebagai SHA-256 hash.
@@ -150,7 +152,7 @@ Semua detail lengkap ada di `TECH_STACK.md`. Ringkasan yang wajib dipegang:
 - **Retensi:** video 7 hari, cap 1,5 GB, reading 30 hari, event 90 hari. Disk guard wajib.
 - **Idempotensi:** telemetry `(sensor_id, ts)`, event `(device_id, event_uid)`, upload part by part number.
 - **Waktu:** simpan UTC `timestamptz`; tampilkan `Asia/Jakarta`.
-- **UI:** Nuxt UI + Tailwind + ECharts. Label bahasa Indonesia, kode/nama tabel bahasa Inggris.
+- **UI:** Nuxt UI 4 + Tailwind + ECharts. Label bahasa Indonesia, kode/nama tabel bahasa Inggris.
 - **Keamanan:** secret hanya di `.env`/environment; jangan commit token/password; bucket private; signed URL.
 - **Tanpa queue eksternal:** proses async + scheduled task, dengan status yang bisa dipulihkan.
 
@@ -207,7 +209,7 @@ Saat bertanya, berikan 2–3 opsi dan rekomendasi singkat. Jangan memberikan per
 - Menyimpan video/thumbnail di database.
 - Membuat bucket MinIO public atau URL video permanen.
 - Memakai offset pagination untuk time-series.
-- Menambahkan polling padahal SSE sudah ditetapkan.
+- Menjadikan polling sebagai pengganti SSE; polling hanya fallback 5 detik saat SSE terputus.
 - Mengabaikan idempotensi ingest.
 - Menambahkan fitur 3 fasa, multi-tenant, notifikasi, atau laporan sebelum diminta.
 - Melanjutkan ke fitur berikutnya sebelum fitur saat ini diverifikasi user dan di-commit ke Git.
