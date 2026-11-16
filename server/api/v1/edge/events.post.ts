@@ -1,13 +1,19 @@
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { eventsBatchSchema } from '#shared/schemas/edge'
 import { db } from '../../../db'
-import { cameras, events, recordings, sensors } from '../../../db/schema'
+import { cameras, devices, events, recordings, sensors } from '../../../db/schema'
 import { bus } from '../../../utils/bus'
 import type { AuthDevice } from '../../../utils/device-auth'
 
 interface Emission {
   event: 'event.created' | 'event.updated'
   data: Record<string, unknown>
+}
+
+interface DoorEffect {
+  type: 'DOOR_OPEN' | 'DOOR_CLOSE'
+  occurredAt: Date
+  groupUid: string
 }
 
 export default defineEventHandler(async (event) => {
@@ -73,6 +79,13 @@ export default defineEventHandler(async (event) => {
     let accepted = 0
     let duplicated = 0
     const emissions: Emission[] = []
+    const doorEffects: DoorEffect[] = []
+
+    const recordDoorEffect = (item: typeof input[number], occurredAt: Date) => {
+      if ((item.type === 'DOOR_OPEN' || item.type === 'DOOR_CLOSE') && item.group_uid) {
+        doorEffects.push({ type: item.type, occurredAt, groupUid: item.group_uid })
+      }
+    }
 
     for (const item of input) {
       const occurredAt = new Date(item.occurred_at)
@@ -100,6 +113,7 @@ export default defineEventHandler(async (event) => {
 
         if (created) {
           accepted++
+          recordDoorEffect(item, occurredAt)
           emissions.push({
             event: 'event.created',
             data: { id: created.id, event_uid: item.event_uid, type: item.type, severity: item.severity },
@@ -128,6 +142,7 @@ export default defineEventHandler(async (event) => {
 
       if (updated) {
         accepted++
+        recordDoorEffect(item, occurredAt)
         emissions.push({
           event: 'event.updated',
           data: { id: updated.id, event_uid: item.event_uid, type: item.type, severity: item.severity },
@@ -162,10 +177,54 @@ export default defineEventHandler(async (event) => {
       }
 
       accepted++
+      recordDoorEffect(item, occurredAt)
       emissions.push({
         event: 'event.created',
         data: { id: created.id, event_uid: item.event_uid, type: item.type, severity: item.severity },
       })
+    }
+
+    for (const effect of doorEffects) {
+      if (effect.type === 'DOOR_OPEN') {
+        await tx
+          .update(devices)
+          .set({ doorState: 'open', updatedAt: now })
+          .where(eq(devices.id, device.id))
+        continue
+      }
+
+      // DOOR_CLOSE menutup DOOR_OPEN dengan group_uid yang sama.
+      const [open] = await tx
+        .select({ id: events.id, eventUid: events.eventUid, occurredAt: events.occurredAt })
+        .from(events)
+        .where(and(
+          eq(events.deviceId, device.id),
+          eq(events.type, 'DOOR_OPEN'),
+          eq(events.groupUid, effect.groupUid),
+          isNull(events.endedAt),
+          lte(events.occurredAt, effect.occurredAt),
+        ))
+        .orderBy(desc(events.occurredAt))
+        .limit(1)
+
+      if (open) {
+        const durationMs = Math.max(0, effect.occurredAt.getTime() - open.occurredAt.getTime())
+
+        await tx
+          .update(events)
+          .set({ endedAt: effect.occurredAt, durationMs, updatedAt: now })
+          .where(eq(events.id, open.id))
+
+        emissions.push({
+          event: 'event.updated',
+          data: { id: open.id, event_uid: open.eventUid, type: 'DOOR_OPEN', duration_ms: durationMs },
+        })
+      }
+
+      await tx
+        .update(devices)
+        .set({ doorState: 'closed', updatedAt: now })
+        .where(eq(devices.id, device.id))
     }
 
     // Korelasi recording yang datang lebih dulu atau lebih lambat dari event.

@@ -75,6 +75,16 @@ export const eventInputSchema = z.object({
   group_uid: z.string().trim().min(1).max(64).optional(),
   details: z.record(z.string(), z.unknown()).default({}),
   video_requested: z.boolean().optional(),
+}).superRefine((value, ctx) => {
+  const isDoor = value.type === 'DOOR_OPEN' || value.type === 'DOOR_CLOSE'
+
+  if (isDoor && !value.group_uid) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['group_uid'],
+      message: 'group_uid wajib untuk event pintu',
+    })
+  }
 })
 
 export const eventsBatchSchema = z.object({

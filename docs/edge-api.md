@@ -174,3 +174,40 @@ Aturan:
 - `END`/`UPDATE` mengisi `ended_at`, menggabungkan `details`, dan memperbarui `type`/`severity`, tetapi tidak pernah menimpa `status`, `note`, atau kolom workflow.
 - `END`/`UPDATE` tanpa `START` tetap disimpan sebagai event mandiri.
 - Recording dengan `event_uid` sama otomatis ditautkan ke event.
+
+Event pintu:
+
+```json
+{
+  "events": [
+    {
+      "event_uid": "evt-20261116-0002",
+      "action": "START",
+      "type": "DOOR_OPEN",
+      "severity": "warning",
+      "occurred_at": "2026-11-16T10:02:13+07:00",
+      "sensor": "DOOR-1",
+      "group_uid": "door-session-1",
+      "details": { "state": "open" }
+    },
+    {
+      "event_uid": "evt-20261116-0003",
+      "action": "START",
+      "type": "DOOR_CLOSE",
+      "severity": "warning",
+      "occurred_at": "2026-11-16T10:04:43+07:00",
+      "sensor": "DOOR-1",
+      "group_uid": "door-session-1",
+      "details": { "state": "closed" }
+    }
+  ]
+}
+```
+
+Aturan tambahan untuk `DOOR_OPEN` dan `DOOR_CLOSE`:
+
+- `group_uid` wajib diisi; satu sesi pintu memakai `group_uid` yang sama.
+- `DOOR_OPEN` yang diterima mengubah `devices.door_state` menjadi `open`.
+- `DOOR_CLOSE` mencari `DOOR_OPEN` terakhir dengan `group_uid` sama yang belum punya `ended_at`, lalu mengisi `ended_at` dan `duration_ms` pada event `DOOR_OPEN` tersebut.
+- `DOOR_CLOSE` mengubah `devices.door_state` menjadi `closed`.
+- `DOOR_CLOSE` tanpa `DOOR_OPEN` pasangan tetap disimpan sebagai event.
