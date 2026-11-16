@@ -123,3 +123,54 @@ Aturan:
 - Duplikat `(sensor_id, ts)` diabaikan dan dihitung di `duplicated`, bukan `409`.
 - `sensors.last_value` dan `last_ts` hanya diperbarui oleh reading dengan `ts` terbaru.
 - Timestamp diterima dalam UTC atau offset (`+07:00`) dan disimpan sebagai UTC.
+
+## POST /api/v1/edge/events
+
+Menyimpan event anomali arus dan event pintu. Maksimal 100 event per batch.
+
+Request:
+
+```json
+{
+  "events": [
+    {
+      "event_uid": "evt-20261116-0001",
+      "action": "START",
+      "type": "ANOMALY_CURRENT_DROP",
+      "severity": "critical",
+      "occurred_at": "2026-11-16T10:02:13+07:00",
+      "sensor": "CT1-R",
+      "details": {
+        "baseline_a": 32.4,
+        "observed_a": 0.3,
+        "threshold_a": 5.0,
+        "delta_pct": -99.1,
+        "rule_id": "CUR_DROP_V1",
+        "confidence": 0.97
+      },
+      "video_requested": true
+    }
+  ]
+}
+```
+
+Response `200`:
+
+```json
+{
+  "accepted": 1,
+  "duplicated": 0,
+  "server_time": "2026-11-16T03:00:00.000Z"
+}
+```
+
+Aturan:
+
+- `event_uid` harus cocok `^[A-Za-z0-9_-]{8,64}$` dan unik per device.
+- `type`: `ANOMALY_CURRENT_DROP`, `ANOMALY_CURRENT_SURGE`, `ANOMALY_ZERO_CURRENT`, `DOOR_OPEN`, `DOOR_CLOSE`.
+- `severity`: `info`, `warning`, `critical`.
+- `action`: `START`, `END`, `UPDATE`.
+- `START` membuat event dengan status `open`. Retry `START` dengan `event_uid` sama dihitung `duplicated` dan tidak mengubah data.
+- `END`/`UPDATE` mengisi `ended_at`, menggabungkan `details`, dan memperbarui `type`/`severity`, tetapi tidak pernah menimpa `status`, `note`, atau kolom workflow.
+- `END`/`UPDATE` tanpa `START` tetap disimpan sebagai event mandiri.
+- Recording dengan `event_uid` sama otomatis ditautkan ke event.

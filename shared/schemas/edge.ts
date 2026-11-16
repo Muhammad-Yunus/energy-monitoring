@@ -56,3 +56,29 @@ export const telemetrySchema = z.object({
 })
 
 export type TelemetryInput = z.infer<typeof telemetrySchema>
+
+export const EVENT_TYPES = [
+  'ANOMALY_CURRENT_DROP',
+  'ANOMALY_CURRENT_SURGE',
+  'ANOMALY_ZERO_CURRENT',
+  'DOOR_OPEN',
+  'DOOR_CLOSE',
+] as const
+
+export const eventInputSchema = z.object({
+  event_uid: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/),
+  action: z.enum(['START', 'END', 'UPDATE']),
+  type: z.enum(EVENT_TYPES),
+  severity: z.enum(['info', 'warning', 'critical']),
+  occurred_at: z.iso.datetime({ offset: true }),
+  sensor: z.string().trim().min(1).max(50).optional(),
+  group_uid: z.string().trim().min(1).max(64).optional(),
+  details: z.record(z.string(), z.unknown()).default({}),
+  video_requested: z.boolean().optional(),
+})
+
+export const eventsBatchSchema = z.object({
+  events: z.array(eventInputSchema).min(1).max(100),
+})
+
+export type EventInput = z.infer<typeof eventInputSchema>
