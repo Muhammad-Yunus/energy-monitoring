@@ -37,7 +37,7 @@ pnpm seed
 pnpm dev
 ```
 
-RustFS berjalan sebagai UID `1000` (user `pi`), jadi direktori `data/rustfs` dan `data/rustfs-logs` harus dapat ditulis oleh UID tersebut.
+RustFS berjalan sebagai UID `1000` (user `pi`), jadi direktori `data/rustfs` dan `data/rustfs-logs` harus dapat ditulis oleh UID tersebut. Isi `EDGE_TOKEN` dengan `em_` diikuti 64 karakter hex sebelum menjalankan `pnpm seed`.
 
 - Dashboard: `http://localhost:3000`
 - Health check: `http://localhost:3000/api/health`
