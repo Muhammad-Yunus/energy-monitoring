@@ -1,0 +1,83 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.yarn/
+.pnp.*
+.pnp.js
+
+# Nuxt / Nitro build output
+.nuxt/
+.output/
+.nitro/
+.cache/
+dist/
+.data/
+.nuxi/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# Local data and storage
+data/
+backups/
+uploads/
+tmp/
+temp/
+*.dump
+*.sql.gz
+
+# Generated media
+scripts/fixtures/*.mp4
+scripts/fixtures/*.mov
+scripts/fixtures/*.webm
+scripts/fixtures/*.jpg
+scripts/fixtures/*.png
+!scripts/fixtures/.gitkeep
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.pnpm-debug.log*
+
+# Test output
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+.vitest/
+*.tsbuildinfo
+.eslintcache
+
+# Local agent/tooling state
+.agents/
+.claude/
+.grok/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local runtime files
+*.pid
+*.seed
+*.pid.lock
