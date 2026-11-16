@@ -11,8 +11,9 @@ Scaffold awal:
 - PostgreSQL 17 + Drizzle ORM.
 - MinIO untuk object storage.
 - Endpoint `GET /api/health`.
+- Login admin dengan session cookie dan proteksi halaman.
 
-Belum termasuk: autentikasi, ingest edge, dashboard, video pipeline, simulator, dan retensi.
+Belum termasuk: ingest edge, dashboard, video pipeline, simulator, dan retensi.
 
 ## Kebutuhan
 
@@ -30,11 +31,13 @@ docker compose up -d db minio
 pnpm install
 pnpm db:generate
 pnpm db:migrate
+pnpm seed
 pnpm dev
 ```
 
 Dashboard: `http://localhost:3000`  
-Health check: `http://localhost:3000/api/health`
+Health check: `http://localhost:3000/api/health`  
+Login: pakai `ADMIN_EMAIL` dan `ADMIN_PASSWORD` dari `.env`.
 
 ## Perintah
 
@@ -47,4 +50,5 @@ pnpm lint
 pnpm db:generate
 pnpm db:migrate
 pnpm db:studio
+pnpm seed
 ```
