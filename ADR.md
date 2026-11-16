@@ -20,7 +20,7 @@
   - Positif: batas modul di `server/` dan `shared/` menjaga keteraturan.
 - **Alternatif yang ditolak:**
   - Backend NestJS/Hono terpisah + SPA: lebih banyak service dan overhead untuk demo.
-  - Serverless: tidak cocok dengan MinIO/PostgreSQL lokal dan koneksi edge.
+  - Serverless: tidak cocok dengan RustFS/PostgreSQL lokal dan koneksi edge.
 
 ---
 
@@ -44,7 +44,7 @@
 
 ## ADR-003: MinIO sebagai Object Storage Video
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-021
 - **Tanggal:** 16 November 2026
 - **Konteks:** Video evidence berukuran biner, harus private, dan perlu diakses edge serta browser. Database tidak cocok untuk blob.
 - **Keputusan:** Simpan video dan thumbnail di MinIO lokal (S3-compatible), bucket private, akses lewat presigned URL.
@@ -64,10 +64,10 @@
 - **Status:** Accepted
 - **Tanggal:** 16 November 2026
 - **Konteks:** Edge harus mengunggah video tanpa membebani proses Nitro. Klip demo <1 MB dan selalu menjadi satu part.
-- **Keputusan:** API membuat S3 multipart upload, mengembalikan `upload_id` dan `part_size`, lalu edge mengunggah part langsung ke MinIO memakai presigned URL. Demo menyediakan status upload dan abort; resume tidak termasuk scope.
+- **Keputusan:** API membuat S3 multipart upload, mengembalikan `upload_id` dan `part_size`, lalu edge mengunggah part langsung ke RustFS memakai presigned URL. Demo menyediakan status upload dan abort; resume tidak termasuk scope.
 - **Konsekuensi:**
   - Positif: payload video tidak melewati Node, memory aman, jalur kode sama untuk file lebih besar.
-  - Negatif: edge harus bisa menjangkau endpoint MinIO; butuh URL signing dengan host yang benar; ETag harus dikirim saat complete.
+  - Negatif: edge harus bisa menjangkau endpoint RustFS; butuh URL signing dengan host yang benar; ETag harus dikirim saat complete.
   - Negatif: upload yang terputus harus diulang dari awal; tidak ada resume part.
   - Netral: untuk klip <5 MB, multipart hanya memiliki satu part.
 - **Alternatif yang ditolak:**
@@ -116,15 +116,15 @@
 
 - **Status:** Accepted
 - **Tanggal:** 16 November 2026
-- **Konteks:** Docker belum terpasang. Nuxt butuh iterasi cepat saat development. PostgreSQL dan MinIO adalah stateful service yang lebih rapi jika terisolasi.
-- **Keputusan:** PostgreSQL dan MinIO berjalan di Docker Compose; Nuxt berjalan native (`pnpm dev` saat development, `node .output/server/index.mjs` + systemd saat demo).
+- **Konteks:** Docker belum terpasang. Nuxt butuh iterasi cepat saat development. PostgreSQL dan RustFS adalah stateful service yang lebih rapi jika terisolasi.
+- **Keputusan:** PostgreSQL dan RustFS berjalan di Docker Compose; Nuxt berjalan native (`pnpm dev` saat development, `node .output/server/index.mjs` + systemd saat demo).
 - **Konsekuensi:**
   - Positif: stateful service terisolasi dan mudah di-reset; HMR Nuxt tetap cepat; konsumsi RAM lebih rendah daripada full Docker.
   - Negatif: dua mekanisme operasional (Docker + systemd); Docker harus di-install.
   - Netral: seluruh stack tetap bisa dipindah ke full Docker nanti.
 - **Alternatif yang ditolak:**
   - Full Docker: build Nuxt di Pi lebih lambat dan volume source/mount menambah kompleksitas.
-  - Semua native: setup PostgreSQL/MinIO lebih manual dan rawan drift.
+  - Semua native: setup PostgreSQL/RustFS lebih manual dan rawan drift.
 
 ---
 
@@ -247,7 +247,7 @@
 
 - **Status:** Accepted
 - **Tanggal:** 16 November 2026
-- **Konteks:** Server dan MinIO berada di host yang sama, tetapi presigned URL harus dapat diakses edge/browser dari LAN. URL bertanda tangan terikat pada host.
+- **Konteks:** Server dan RustFS berada di host yang sama, tetapi presigned URL harus dapat diakses edge/browser dari LAN. URL bertanda tangan terikat pada host.
 - **Keputusan:**
   - `S3_INTERNAL_ENDPOINT=http://127.0.0.1:9000` untuk operasi server (create/complete/head/get).
   - `S3_PUBLIC_ENDPOINT=http://192.168.1.112:9000` untuk membuat presigned URL.
@@ -259,7 +259,7 @@
 - **Alternatif yang ditolak:**
   - Satu endpoint LAN untuk semua: bergantung pada kemampuan host mengakses IP sendiri.
   - Hostname mDNS: belum tentu resolvable dari edge.
-  - Reverse proxy MinIO: menambah hop dan konfigurasi.
+  - Reverse proxy RustFS: menambah hop dan konfigurasi.
 
 ---
 
@@ -366,7 +366,32 @@
 - **Konsekuensi:**
   - Positif: audit trail jelas, cache aman, lifecycle per prefix mudah.
   - Negatif: key panjang; orphan object perlu dibersihkan.
-  - Netral: event_uid membantu korelasi manual di MinIO.
+  - Netral: event_uid membantu korelasi manual di RustFS.
 - **Alternatif yang ditolak:**
   - Key dari filename edge: rawan collision/traversal.
   - Path mutable: menyulitkan cache dan audit.
+
+---
+
+## ADR-021: RustFS sebagai Object Storage Video (Menggantikan MinIO)
+
+- **Status:** Accepted
+- **Tanggal:** 16 November 2026
+- **Konteks:** ADR-003 memilih MinIO. Pada 2026 image komunitas MinIO tidak lagi tersedia: `minio/minio` dan `minio/mc` dihapus dari Docker Hub dan Quay menolak pull anonim. Demo tetap membutuhkan object storage S3-compatible yang dapat berjalan di ARM64.
+- **Keputusan:**
+  - Gunakan RustFS `rustfs/rustfs:1.0.6` di Docker Compose sebagai pengganti MinIO.
+  - Kontrak S3 tidak berubah: bucket private `recordings`, presigned multipart, dan dual endpoint internal/public.
+  - Container berjalan sebagai UID/GID `1000:1000` agar dapat menulis bind mount `./data/rustfs` dan `./data/rustfs-logs`.
+  - Kredensial memakai `S3_ACCESS_KEY`/`S3_SECRET_KEY`, dipetakan ke `RUSTFS_ACCESS_KEY`/`RUSTFS_SECRET_KEY`.
+  - Inisialisasi bucket memakai `pnpm storage:init` (AWS SDK), bukan container `mc`.
+  - Field `/api/health` tetap `minio` agar kontrak API yang sudah ada tidak berubah.
+- **Konsekuensi:**
+  - Positif: image tersedia untuk ARM64, API S3-compatible, presigned URL dan range request tetap berjalan, kode storage tidak berubah.
+  - Negatif: RustFS lebih baru dan belum seluas MinIO; port console `9001` hanya untuk LAN.
+  - Netral: nama bucket, object key, retensi, dan alur upload tidak berubah.
+- **Alternatif yang ditolak:**
+  - `bitnamilegacy/minio`: mirror legacy tanpa jaminan update dan keamanan.
+  - Cloud S3: tidak sesuai demo lokal dan konektivitas edge.
+  - Filesystem lokal: kehilangan presigned URL dan multipart.
+  - SeaweedFS/Garage: menambah perbedaan implementasi S3 yang belum dibutuhkan.
+- **Supersedes:** ADR-003.

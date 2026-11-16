@@ -33,7 +33,7 @@ const { user, logout } = useAuth()
 
         <div class="space-y-2 text-sm">
           <p>Database: {{ health?.db ? 'ok' : 'gagal' }}</p>
-          <p>MinIO: {{ health?.minio ? 'ok' : 'gagal' }}</p>
+          <p>Storage: {{ health?.minio ? 'ok' : 'gagal' }}</p>
         </div>
       </UCard>
     </div>

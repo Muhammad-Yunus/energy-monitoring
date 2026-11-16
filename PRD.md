@@ -92,7 +92,7 @@ Demo hanya memiliki satu akun admin yang di-seed. Role disimpan di tabel `users`
 - Jaringan: LAN, IP `192.168.1.112` (disarankan DHCP reservation/static).
 - Node.js 22.23.5 dan FFmpeg 7.1.5 tersedia; pnpm dipasang via `corepack enable`.
 - Docker Engine + Compose plugin akan di-install.
-- PostgreSQL dan MinIO berjalan di Docker; Nuxt berjalan native.
+- PostgreSQL dan RustFS berjalan di Docker; Nuxt berjalan native.
 - Edge/simulator dapat menjangkau `http://192.168.1.112:3000` dan `http://192.168.1.112:9000`.
 - Video dari edge berformat MP4 H.264, 10 detik, 720p, tanpa audio, target <1 MB.
 - Waktu server dan edge disinkronkan dengan NTP.
@@ -114,7 +114,7 @@ Edge/Simulator
         Nuxt API ──> PostgreSQL
             │            │
             │            └─ event, reading, recording, user, audit
-            ├─> MinIO (video + thumbnail)
+            ├─> RustFS (video + thumbnail)
             └─> SSE ──> Dashboard
 ```
 
@@ -153,7 +153,7 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 | FR-08 | Ingest event door | P0 | Open/close tersimpan dan dapat dipasangkan lewat `group_uid` |
 | FR-09 | Idempotensi event | P0 | `(device_id, event_uid)` unik; retry tidak menggandakan event |
 | FR-10 | Sesi recording | P0 | Edge dapat membuat sesi upload dengan metadata video |
-| FR-11 | Presigned multipart | P0 | Edge mengunggah part langsung ke MinIO dan mendapat ETag |
+| FR-11 | Presigned multipart | P0 | Edge mengunggah part langsung ke RustFS dan mendapat ETag |
 | FR-12 | Status dan abort upload | P0 | Edge dapat menanyakan status upload dan membatalkan sesi; multipart di-abort |
 | FR-13 | Finalisasi video | P0 | Ukuran, SHA-256, dan ffprobe divalidasi; thumbnail dibuat; status `ready` |
 | FR-14 | Playback video | P0 | Video hanya dapat diputar oleh user login lewat signed URL |
@@ -185,7 +185,7 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 | NFR-08 | Kompatibilitas | MP4 H.264 tanpa audio, playback di Chrome/Firefox/Safari |
 | NFR-09 | Usability | UI bahasa Indonesia, responsif, status warna konsisten |
 | NFR-10 | Maintainability | TypeScript strict, validasi Zod, migrasi Drizzle, dokumentasi |
-| NFR-11 | Observability | Health check DB/MinIO, status device, log terbatas |
+| NFR-11 | Observability | Health check DB/RustFS, status device, log terbatas |
 | NFR-12 | Portabilitas | ARM64; seluruh service berjalan di Pi 5 |
 
 ---
@@ -277,7 +277,7 @@ Ketentuan:
 | GET | `/api/v1/recordings/:id/thumbnail` | Redirect ke thumbnail |
 | GET | `/api/v1/devices` | Status device |
 | GET | `/api/v1/stream` | SSE live |
-| GET | `/api/health` | Health check DB/MinIO (tanpa auth) |
+| GET | `/api/health` | Health check DB/RustFS (tanpa auth) |
 
 `PATCH /api/v1/events/:id` menerima `status` (`acknowledged`, `resolved`, `false_positive`) dan `note` opsional. Transisi status divalidasi; `acknowledged_by`/`resolved_by` diisi dari session user.
 
@@ -334,7 +334,7 @@ Aturan disk guard:
 
 - Jika total video >1,5 GB, hapus recording tertua.
 - Jika free disk <1 GB, tolak recording baru dengan `507` dan tampilkan warning.
-- Hapus object MinIO lebih dulu, lalu baris database. Jika object gagal dihapus, jangan hapus baris dan catat untuk retry pada siklus retensi berikutnya.
+- Hapus object RustFS lebih dulu, lalu baris database. Jika object gagal dihapus, jangan hapus baris dan catat untuk retry pada siklus retensi berikutnya.
 - Batasi log Docker dan journal systemd agar SD card tidak penuh.
 
 Backup:
@@ -349,7 +349,7 @@ Backup:
 
 ### 14.1 Skenario Demo
 
-1. Start PostgreSQL + MinIO, jalankan migrasi dan seed.
+1. Start PostgreSQL + RustFS, jalankan migrasi dan seed.
 2. Jalankan Nuxt, buka dashboard, login sebagai admin.
 3. Jalankan simulator mode normal; grafik arus bergerak.
 4. Trigger `current-drop`; event critical muncul dan video dapat diputar.
@@ -370,7 +370,7 @@ Backup:
 - [ ] Device offline terdeteksi dari `last_seen_at` tanpa membuat event palsu.
 - [ ] Retensi menghapus data lama dan storage usage terlihat.
 - [ ] Acknowledge/resolve tercatat di audit log.
-- [ ] `/api/health` melaporkan status DB dan MinIO.
+- [ ] `/api/health` melaporkan status DB dan RustFS.
 - [ ] Dashboard dapat dipakai dari HP di LAN.
 
 ### 14.3 Metrik Keberhasilan Demo
@@ -425,7 +425,7 @@ Backup:
 |---|---|---|
 | SD card penuh/rusak | Video gagal, data hilang | Retensi 7 hari, cap 1,5 GB, log rotation, backup |
 | IP Pi berubah | Presigned URL/edge gagal | Static IP/DHCP reservation |
-| MinIO tidak reachable dari edge | Upload video gagal | Bind `0.0.0.0:9000`, firewall LAN, uji dari device lain |
+| RustFS tidak reachable dari edge | Upload video gagal | Bind `0.0.0.0:9000`, firewall LAN, uji dari device lain |
 | Kualitas video rendah | Evidence kurang detail | 720p/<1 MB cukup demo; naikkan bitrate untuk produksi |
 | Script random terlalu sering | Disk cepat penuh | Batasi event rate, mode demo singkat, disk guard |
 | HTTP tanpa TLS | Token/data tidak terenkripsi | Demo LAN saja; produksi pasang TLS |

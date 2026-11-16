@@ -68,7 +68,7 @@ Yang **masuk**:
 - 1 kamera.
 - Ingest telemetry, event anomali, event door, heartbeat.
 - Video 10 detik, 720p, H.264, target <1 MB.
-- Presigned S3 multipart ke MinIO.
+- Presigned S3 multipart ke RustFS.
 - Dashboard live + histori.
 - Event inbox + acknowledge/resolve.
 - Retensi 7 hari dan disk guard.
@@ -142,7 +142,7 @@ Semua detail lengkap ada di `TECH_STACK.md`. Ringkasan yang wajib dipegang:
 
 - **Framework:** Nuxt 4 + Vue 3 + TypeScript. API di `server/`, UI di `app/`, schema bersama di `shared/`.
 - **Database:** PostgreSQL 17 + Drizzle ORM + `postgres.js`. Migrasi via `drizzle-kit`.
-- **Storage video:** MinIO, bucket private, presigned S3 multipart. Jangan simpan video di PostgreSQL.
+- **Storage video:** RustFS, bucket private, presigned S3 multipart. Jangan simpan video di PostgreSQL.
 - **Endpoint S3:** internal `127.0.0.1:9000` untuk operasi server; public `192.168.1.112:9000` untuk presign.
 - **Realtime:** SSE dengan in-memory event bus. Tanpa Redis, tanpa WebSocket. Polling 5 detik hanya fallback saat SSE terputus.
 - **Time-series:** tabel `readings` biasa, tanpa Timescale/partisi. Downsampling memakai `date_bin`.
@@ -207,7 +207,7 @@ Saat bertanya, berikan 2–3 opsi dan rekomendasi singkat. Jangan memberikan per
 - Menambah Redis, BullMQ, pg-boss, TimescaleDB, atau microservice “untuk masa depan”.
 - Membuat repository/service layer generik yang tidak dibutuhkan.
 - Menyimpan video/thumbnail di database.
-- Membuat bucket MinIO public atau URL video permanen.
+- Membuat bucket RustFS public atau URL video permanen.
 - Memakai offset pagination untuk time-series.
 - Menjadikan polling sebagai pengganti SSE; polling hanya fallback 5 detik saat SSE terputus.
 - Mengabaikan idempotensi ingest.

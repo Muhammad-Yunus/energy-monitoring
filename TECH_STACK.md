@@ -13,7 +13,7 @@ Aplikasi demo berjalan di satu Raspberry Pi 5 dengan arsitektur hybrid:
 
 - **Nuxt 4** sebagai API (Nitro) dan dashboard (Vue 3 + Vite + TypeScript), berjalan native.
 - **PostgreSQL 17** di Docker untuk data relasional.
-- **MinIO** di Docker untuk video evidence dan thumbnail.
+- **RustFS** di Docker untuk video evidence dan thumbnail.
 - **FFmpeg/ffprobe** native untuk validasi video dan thumbnail.
 - **SSE** untuk update live, tanpa Redis.
 - **Simulator API** untuk menghasilkan data random dan menguji jalur edge sebenarnya.
@@ -37,8 +37,7 @@ Target demo: satu gardu, satu sensor arus satu fasa, satu door contact, satu kam
 | Drizzle ORM | 0.45.4 | `drizzle-orm` + `drizzle-kit` |
 | Driver DB | `postgres` (postgres.js) | Pure JS, ARM64-friendly |
 | PostgreSQL | 17-alpine | Docker |
-| MinIO | latest stable, pin tag/digest | Docker |
-| MinIO Client | `mc` terbaru | Init bucket/CORS |
+| RustFS | 1.0.6 | Docker, S3-compatible |
 | Tailwind CSS | 4.3.5 | Via Nuxt UI |
 | Nuxt UI | 4.12.0 | Komponen dashboard |
 | ECharts | latest stable | Grafik time-series |
@@ -64,14 +63,14 @@ Target demo: satu gardu, satu sensor arus satu fasa, satu door contact, satu kam
 │                                    ├──Drizzle──> PostgreSQL │
 │                                    │            127.0.0.1:5432
 │                                    │                        │
-│                                    ├──S3 ops───> MinIO :9000 │
+│                                    ├──S3 ops───> RustFS :9000 │
 │                                    │            (internal)  │
 │                                    │                        │
-│                                    └──presign──> MinIO :9000 │
+│                                    └──presign──> RustFS :9000 │
 │                                                 (public LAN) │
 │                                                             │
 │  Browser ──HTTP LAN :3000──> Dashboard                      │
-│          └──presigned GET──> MinIO :9000                    │
+│          └──presigned GET──> RustFS :9000                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -81,17 +80,17 @@ Target demo: satu gardu, satu sensor arus satu fasa, satu door contact, satu kam
 |---|---|---|---|
 | Nuxt app | Node 22 native | 3000 | `pnpm dev` atau `node .output/server/index.mjs` |
 | PostgreSQL | Docker `postgres:17-alpine` | 127.0.0.1:5432 | Docker Compose |
-| MinIO API | Docker `minio/minio` | 0.0.0.0:9000 | Docker Compose |
-| MinIO console | Docker `minio/minio` | 0.0.0.0:9001 | Docker Compose |
-| MinIO init | Docker `minio/mc` | — | One-shot container |
+| RustFS API | Docker `rustfs/rustfs:1.0.6` | 0.0.0.0:9000 | Docker Compose |
+| RustFS console | Docker `rustfs/rustfs:1.0.6` | 0.0.0.0:9001 | Docker Compose |
 | Simulator | Node/tsx native | — | `pnpm sim` |
 
 ### 3.2 Alamat
 
 - Dashboard: `http://192.168.1.112:3000`
 - API: `http://192.168.1.112:3000/api/v1`
-- MinIO public: `http://192.168.1.112:9000`
-- MinIO internal: `http://127.0.0.1:9000`
+- RustFS public: `http://192.168.1.112:9000`
+- RustFS internal: `http://127.0.0.1:9000`
+- RustFS console: `http://192.168.1.112:9001/rustfs/console/`
 - PostgreSQL: `postgres://...@127.0.0.1:5432/energy_monitoring`
 
 IP harus static/DHCP reservation agar presigned URL dan konfigurasi edge stabil.
@@ -164,6 +163,7 @@ energy-monitoring/
 ├─ drizzle/
 ├─ scripts/
 │  ├─ seed.ts
+│  ├─ init-storage.ts
 │  ├─ api-sim.ts
 │  ├─ make-sample-video.sh
 │  └─ backup.sh
@@ -172,7 +172,8 @@ energy-monitoring/
 │  └─ demo.md
 ├─ data/                  # bind mount, gitignored
 │  ├─ postgres/
-│  └─ minio/
+│  ├─ rustfs/
+│  └─ rustfs-logs/
 ├─ backups/               # gitignored
 ├─ docker-compose.yml
 ├─ drizzle.config.ts
@@ -196,7 +197,7 @@ energy-monitoring/
 | `drizzle-kit` | Generate/migrate schema |
 | `postgres` | Driver PostgreSQL |
 | `zod` | Validasi payload edge/user |
-| `@aws-sdk/client-s3` | Operasi S3/MinIO |
+| `@aws-sdk/client-s3` | Operasi S3/RustFS |
 | `@aws-sdk/s3-request-presigner` | Presigned URL |
 | `@nuxt/ui` | Komponen dashboard |
 | `tailwindcss` | Styling |
@@ -298,6 +299,7 @@ API memilih bucket terkecil yang membuat jumlah titik ≤2.000 untuk rentang yan
 - `pnpm db:generate` — generate migrasi dari schema.
 - `pnpm db:migrate` — apply migrasi.
 - `pnpm seed` — seed site, device, sensor, camera, admin.
+- `pnpm storage:init` — membuat bucket `recordings` jika belum ada.
 - Seed tidak membuat reading/event; data itu lewat API.
 
 ---
@@ -575,7 +577,7 @@ Membatalkan multipart upload di S3 dan menandai recording `failed`.
 | GET | `/api/v1/recordings/:id/thumbnail` | 302 presigned GET |
 | GET | `/api/v1/devices` | Health device |
 | GET | `/api/v1/stream` | SSE |
-| GET | `/api/health` | `{ db, minio }` tanpa auth |
+| GET | `/api/health` | `{ db, minio }` tanpa auth (field `minio` dipertahankan untuk kompatibilitas) |
 
 `PATCH /api/v1/events/:id` menerima:
 
@@ -588,7 +590,7 @@ Membatalkan multipart upload di S3 dan menandai recording `failed`.
 
 Transisi yang diizinkan: `open → acknowledged`, `acknowledged → resolved`, `acknowledged → false_positive`. `resolved`/`false_positive` bersifat final; reopen tidak termasuk demo. `acknowledged_by`/`resolved_by` diisi dari session user dan `acknowledged_at`/`resolved_at` diisi server. Setiap perubahan dicatat ke `audit_logs`.
 
-`GET /api/health` tidak memerlukan auth; mengembalikan `200` jika DB dan MinIO sehat, `503` jika salah satu gagal, tanpa membocorkan detail secret.
+`GET /api/health` tidak memerlukan auth; mengembalikan `200` jika DB dan RustFS sehat, `503` jika salah satu gagal, tanpa membocorkan detail secret.
 
 ### 7.4 Error dan Retry
 
@@ -676,7 +678,7 @@ Klip <1 MB akan menjadi satu part. Multipart tetap dipakai agar jalur kode sama 
 7. Bandingkan dengan `sha256` dari edge; jika beda → `failed`.
 8. Jalankan `ffprobe`; validasi codec/durasi.
 9. Buat thumbnail dengan ffmpeg.
-10. Upload thumbnail ke MinIO.
+10. Upload thumbnail ke RustFS.
 11. Update recording `ready`, emit SSE.
 12. Hapus temp file.
 
@@ -714,7 +716,7 @@ ffmpeg -y -ss 5 -i input.mp4 -frames:v 1 -vf scale=640:-2 -q:v 5 thumb.jpg
 
 - `GET /api/v1/recordings/:id/playback` mengecek session user dan status `ready`.
 - Server membuat presigned GET 5 menit dan mengembalikan `302`.
-- Browser memakai `<video controls>`; MinIO mendukung range request.
+- Browser memakai `<video controls>`; RustFS mendukung range request.
 - Jika thumbnail belum ada, gunakan placeholder.
 - Video tidak pernah disajikan dari filesystem publik.
 
@@ -756,7 +758,7 @@ Presigned PUT dari edge bukan browser, sehingga tidak memerlukan CORS. CORS GET/
 ### 9.3 Keamanan Operasional
 
 - Postgres hanya bind `127.0.0.1`.
-- MinIO API/console hanya LAN; firewall.
+- RustFS API/console hanya LAN; firewall.
 - Bucket private.
 - Jangan commit `.env`, token, atau password.
 - Audit log untuk login, perubahan status event, dan akses video.
@@ -817,9 +819,9 @@ Tanpa queue eksternal. Gunakan:
 
 - Hitung total `recordings.size_bytes`.
 - Jika >1,5 GB, hapus recording tertua.
-- Cek `fs.statfs` pada direktori MinIO.
+- Cek `fs.statfs` pada direktori RustFS.
 - Jika free <1 GB, tolak recording baru dengan `507`.
-- Hapus object MinIO lebih dulu; jika gagal, jangan hapus baris dan ulangi pada siklus berikutnya.
+- Hapus object RustFS lebih dulu; jika gagal, jangan hapus baris dan ulangi pada siklus berikutnya.
 - Tampilkan storage usage di dashboard.
 - Batasi ukuran log Docker/journal.
 
@@ -841,19 +843,18 @@ Service:
 | Service | Image | Port | Volume | Catatan |
 |---|---|---|---|---|
 | `db` | `postgres:17-alpine` | `127.0.0.1:5432:5432` | `./data/postgres` | `shared_buffers=256MB`, `max_connections=20` |
-| `minio` | `minio/minio` | `9000:9000`, `9001:9001` | `./data/minio` | `server /data --console-address :9001` |
-| `minio-init` | `minio/mc` | — | — | Buat bucket, private, CORS |
+| `rustfs` | `rustfs/rustfs:1.0.6` | `9000:9000`, `9001:9001` | `./data/rustfs`, `./data/rustfs-logs` | `user: 1000:1000`, console di 9001 |
 
 Ketentuan:
 
-- `restart: unless-stopped` untuk `db` dan `minio`.
-- Healthcheck PostgreSQL dan MinIO.
-- Kredensial Postgres/MinIO diambil dari `.env` (`POSTGRES_*`, `MINIO_ROOT_*`); `S3_ACCESS_KEY`/`S3_SECRET_KEY` harus sama dengan kredensial MinIO.
+- `restart: unless-stopped` untuk `db` dan `rustfs`.
+- Healthcheck PostgreSQL dan RustFS (`/health`).
+- Kredensial storage diambil dari `.env` (`S3_ACCESS_KEY`, `S3_SECRET_KEY`), dipetakan ke `RUSTFS_ACCESS_KEY`/`RUSTFS_SECRET_KEY`.
 - Logging `json-file` dengan `max-size: 10m`, `max-file: 3`.
 - Bind mount data agar mudah dibackup dan dipindah ke SSD.
 - `.env` tidak di-commit.
-- `docker compose up -d db minio` untuk development.
-- `minio-init` dijalankan sekali setelah MinIO sehat.
+- `docker compose up -d db rustfs` untuk development.
+- `pnpm storage:init` dijalankan sekali setelah RustFS sehat untuk membuat bucket private.
 
 ### 12.2 Systemd untuk Nuxt
 
@@ -881,7 +882,7 @@ PrivateTmp=true
 WantedBy=multi-user.target
 ```
 
-Aplikasi harus menangani DB/MinIO belum siap dengan retry/health check, atau gunakan `ExecStartPre` untuk menunggu port.
+Aplikasi harus menangani DB/RustFS belum siap dengan retry/health check, atau gunakan `ExecStartPre` untuk menunggu port.
 
 ### 12.3 Resource Budget
 
@@ -889,7 +890,7 @@ Aplikasi harus menangani DB/MinIO belum siap dengan retry/health check, atau gun
 |---|---|
 | OS + Docker | 500 MB–1 GB |
 | PostgreSQL | 150–300 MB |
-| MinIO | 200–400 MB |
+| RustFS | 200–400 MB |
 | Nuxt | 300–600 MB |
 | FFmpeg (saat proses) | 100–300 MB |
 | Total idle | ±1,5–2,5 GB |
@@ -911,8 +912,6 @@ Batasi `NODE_OPTIONS=--max-old-space-size=2048` jika perlu.
 | `POSTGRES_DB` | `energy_monitoring` | Ya | Docker Compose |
 | `POSTGRES_USER` | `energy` | Ya | Docker Compose |
 | `POSTGRES_PASSWORD` | `change-me` | Ya | Jangan commit |
-| `MINIO_ROOT_USER` | `minioadmin` | Ya | Docker Compose |
-| `MINIO_ROOT_PASSWORD` | `change-me` | Ya | Jangan commit |
 | `SESSION_SECRET` | `32+ random chars` | Ya | Cookie sealing |
 | `ADMIN_EMAIL` | `admin@demo.local` | Ya | Seed |
 | `ADMIN_PASSWORD` | `change-me` | Ya | Seed |
@@ -922,9 +921,9 @@ Batasi `NODE_OPTIONS=--max-old-space-size=2048` jika perlu.
 | `S3_PUBLIC_ENDPOINT` | `http://192.168.1.112:9000` | Ya | Presign |
 | `S3_REGION` | `us-east-1` | Tidak | Default |
 | `S3_BUCKET` | `recordings` | Ya | Bucket private |
-| `S3_ACCESS_KEY` | `minioadmin` | Ya | Jangan commit |
-| `S3_SECRET_KEY` | `minioadmin` | Ya | Jangan commit |
-| `S3_FORCE_PATH_STYLE` | `true` | Ya | MinIO |
+| `S3_ACCESS_KEY` | `rustfsadmin` | Ya | Jangan commit |
+| `S3_SECRET_KEY` | `rustfsadmin` | Ya | Jangan commit |
+| `S3_FORCE_PATH_STYLE` | `true` | Ya | Wajib untuk RustFS |
 | `VIDEO_RETENTION_DAYS` | `7` | Tidak | Default 7 |
 | `VIDEO_MAX_BYTES` | `1610612736` | Tidak | 1,5 GB |
 | `MAX_VIDEO_BYTES` | `5242880` | Tidak | 5 MB/file |
@@ -953,6 +952,7 @@ Batasi `NODE_OPTIONS=--max-old-space-size=2048` jika perlu.
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "seed": "tsx scripts/seed.ts",
+    "storage:init": "tsx scripts/init-storage.ts",
     "sim": "tsx scripts/api-sim.ts",
     "sim:demo": "tsx scripts/api-sim.ts --demo",
     "sim:drop": "tsx scripts/api-sim.ts --scenario drop",
@@ -1030,7 +1030,7 @@ Tidak membuat reading/event/video.
 - Retention menghapus object + row; object gagal dihapus tidak menghapus row.
 - Auth device 401/200.
 - Session user 401/200.
-- `/api/health` 200 saat DB/MinIO sehat, 503 saat salah satu gagal.
+- `/api/health` 200 saat DB/RustFS sehat, 503 saat salah satu gagal.
 - Device offline diturunkan dari `last_seen_at` tanpa event.
 
 Gunakan database test terpisah, misalnya `energy_monitoring_test`, dan reset schema per suite.
@@ -1047,7 +1047,7 @@ Gunakan database test terpisah, misalnya `energy_monitoring_test`, dan reset sch
 
 ### 15.4 Smoke Test
 
-- `GET /api/health` → DB dan MinIO ok.
+- `GET /api/health` → DB dan RustFS ok.
 - Jalankan simulator 30 detik.
 - Pastikan reading, event, dan recording `ready`.
 - Cek storage usage.
@@ -1056,7 +1056,7 @@ Gunakan database test terpisah, misalnya `energy_monitoring_test`, dan reset sch
 
 ## 16. Observability
 
-- Health check: DB query + MinIO `HeadBucket`.
+- Health check: DB query + RustFS `HeadBucket`.
 - Device health: `last_seen_at`, firmware, queue depth, disk free.
 - Dashboard storage: total video, free disk, jumlah recording.
 - Log server: request error, ingest count, upload status, retention actions.
@@ -1110,7 +1110,7 @@ Gunakan database test terpisah, misalnya `energy_monitoring_test`, dan reset sch
 - mTLS atau HMAC signature untuk device.
 - Redis pub/sub untuk SSE multi-instance.
 - TimescaleDB + continuous aggregate untuk multi-gardu.
-- S3 cloud/MinIO cluster untuk retensi lebih panjang.
+- S3 cloud/RustFS cluster untuk retensi lebih panjang.
 - Notifikasi Telegram/WhatsApp/email.
 - RBAC per unit dan SSO/LDAP.
 - Laporan insiden PDF.
@@ -1126,8 +1126,8 @@ Gunakan database test terpisah, misalnya `energy_monitoring_test`, dan reset sch
 - [ ] Pastikan NTP aktif.
 - [ ] Salin `.env.example` ke `.env` dan isi secret.
 - [ ] `corepack enable`.
-- [ ] `docker compose up -d db minio`.
-- [ ] Jalankan `minio-init`; pastikan bucket `recordings` private.
+- [ ] `docker compose up -d db rustfs`.
+- [ ] Jalankan `pnpm storage:init`; pastikan bucket `recordings` private.
 - [ ] `pnpm install`.
 - [ ] `pnpm db:migrate`.
 - [ ] `pnpm seed`.
@@ -1139,7 +1139,7 @@ Gunakan database test terpisah, misalnya `energy_monitoring_test`, dan reset sch
 - [ ] `pnpm sim:offline`; pastikan device offline dari `last_seen_at`.
 - [ ] Cek playback dari browser lain di LAN.
 - [ ] Uji retensi/disk guard.
-- [ ] Setup `pg_dump` harian dari container + backup MinIO.
+- [ ] Setup `pg_dump` harian dari container + backup RustFS.
 - [ ] `pnpm build`; jalankan systemd.
 - [ ] Batasi firewall: 3000/9000/9001 LAN; 5432 lokal.
 - [ ] Dokumentasikan demo di `docs/demo.md`.
