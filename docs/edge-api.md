@@ -85,3 +85,41 @@ Response `200`:
 ```
 
 `thresholds` dan `upload` dibaca dari `devices.config`. Jika config tidak valid, server memakai default.
+
+## POST /api/v1/edge/telemetry
+
+Menyimpan batch reading arus. Maksimal 1.000 reading per batch dan semua `sensor` harus terdaftar untuk device.
+
+Request:
+
+```json
+{
+  "batch_id": "b-20261116-001",
+  "device_ts": "2026-11-16T10:00:00+07:00",
+  "readings": [
+    {
+      "sensor": "CT1-R",
+      "ts": "2026-11-16T10:00:00+07:00",
+      "value": 32.4,
+      "quality": "good"
+    }
+  ]
+}
+```
+
+Response `200`:
+
+```json
+{
+  "accepted": 1,
+  "duplicated": 0,
+  "server_time": "2026-11-16T03:00:00.000Z"
+}
+```
+
+Aturan:
+
+- `quality` opsional, default `good`.
+- Duplikat `(sensor_id, ts)` diabaikan dan dihitung di `duplicated`, bukan `409`.
+- `sensors.last_value` dan `last_ts` hanya diperbarui oleh reading dengan `ts` terbaru.
+- Timestamp diterima dalam UTC atau offset (`+07:00`) dan disimpan sebagai UTC.

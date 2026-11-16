@@ -41,3 +41,18 @@ export const DEFAULT_EDGE_CONFIG: EdgeConfig = {
     max_duration_ms: 30000,
   },
 }
+
+export const telemetryReadingSchema = z.object({
+  sensor: z.string().trim().min(1).max(50),
+  ts: z.iso.datetime({ offset: true }),
+  value: z.number().finite(),
+  quality: z.string().trim().min(1).max(20).default('good'),
+})
+
+export const telemetrySchema = z.object({
+  batch_id: z.string().trim().min(1).max(100),
+  device_ts: z.iso.datetime({ offset: true }).optional(),
+  readings: z.array(telemetryReadingSchema).min(1).max(1000),
+})
+
+export type TelemetryInput = z.infer<typeof telemetrySchema>
