@@ -92,3 +92,34 @@ export const eventsBatchSchema = z.object({
 })
 
 export type EventInput = z.infer<typeof eventInputSchema>
+
+export const recordingSessionSchema = z.object({
+  event_uid: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/),
+  camera: z.string().trim().min(1).max(50),
+  filename: z.string().trim().min(1).max(200).regex(/\.mp4$/i, 'filename harus berekstensi .mp4'),
+  size_bytes: z.number().int().positive(),
+  duration_ms: z.number().int().positive(),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/i).transform(value => value.toLowerCase()),
+  codec: z.literal('h264'),
+  started_at: z.iso.datetime({ offset: true }),
+  ended_at: z.iso.datetime({ offset: true }),
+  trigger_offset_ms: z.number().int().nonnegative(),
+}).superRefine((value, ctx) => {
+  if (new Date(value.ended_at) <= new Date(value.started_at)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['ended_at'],
+      message: 'ended_at harus setelah started_at',
+    })
+  }
+
+  if (value.trigger_offset_ms > value.duration_ms) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['trigger_offset_ms'],
+      message: 'trigger_offset_ms tidak boleh melebihi duration_ms',
+    })
+  }
+})
+
+export type RecordingSessionInput = z.infer<typeof recordingSessionSchema>

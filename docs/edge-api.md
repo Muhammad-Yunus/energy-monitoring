@@ -211,3 +211,53 @@ Aturan tambahan untuk `DOOR_OPEN` dan `DOOR_CLOSE`:
 - `DOOR_CLOSE` mencari `DOOR_OPEN` terakhir dengan `group_uid` sama yang belum punya `ended_at`, lalu mengisi `ended_at` dan `duration_ms` pada event `DOOR_OPEN` tersebut.
 - `DOOR_CLOSE` mengubah `devices.door_state` menjadi `closed`.
 - `DOOR_CLOSE` tanpa `DOOR_OPEN` pasangan tetap disimpan sebagai event.
+
+## POST /api/v1/edge/recordings
+
+Membuat sesi upload video evidence. Server membuat S3 multipart upload di RustFS dan mengembalikan `recording_id`, `upload_id`, serta ukuran part. Video belum harus memiliki event; korelasi dilakukan lewat `event_uid`.
+
+Request:
+
+```json
+{
+  "event_uid": "evt-20261116-0001",
+  "camera": "CAM-1",
+  "filename": "clip.mp4",
+  "size_bytes": 768000,
+  "duration_ms": 10000,
+  "sha256": "64-hex-characters",
+  "codec": "h264",
+  "started_at": "2026-11-16T10:02:08+07:00",
+  "ended_at": "2026-11-16T10:02:18+07:00",
+  "trigger_offset_ms": 5000
+}
+```
+
+Response `200`:
+
+```json
+{
+  "recording_id": "...",
+  "upload_id": "...",
+  "part_size": 5242880,
+  "total_parts": 1,
+  "expires_at": "2026-11-17T03:00:00.000Z"
+}
+```
+
+Aturan:
+
+- `event_uid` harus cocok `^[A-Za-z0-9_-]{8,64}$`; event boleh belum ada.
+- `camera` harus terdaftar pada device dan `enabled`.
+- `filename` wajib berekstensi `.mp4`.
+- `codec` harus `h264`.
+- `size_bytes` maksimum `MAX_VIDEO_BYTES` (default 5 MB).
+- `duration_ms` maksimum `MAX_VIDEO_DURATION_MS` (default 30.000 ms).
+- `sha256` wajib 64 karakter hex.
+- `trigger_offset_ms` tidak boleh melebihi `duration_ms`.
+- `ended_at` harus setelah `started_at`.
+- Part size 5 MiB; `total_parts = ceil(size_bytes / part_size)`.
+- Sesi upload berlaku 24 jam; upload yang terputus diulang dengan sesi baru.
+- Object key: `recordings/{yyyy}/{mm}/{dd}/{event_uid}/{recording_id}.mp4`.
+- Jika event dengan `event_uid` sama sudah ada, recording langsung ditautkan lewat `event_id`.
+- Recording baru berstatus `pending`; upload part mengikuti endpoint parts pada FR-11.
