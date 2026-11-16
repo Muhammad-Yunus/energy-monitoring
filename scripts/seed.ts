@@ -1,9 +1,10 @@
 import 'dotenv/config'
 import { eq } from 'drizzle-orm'
 import { db, dbClient } from '../server/db'
-import { devices, sites, users } from '../server/db/schema'
+import { cameras, devices, sensors, sites, users } from '../server/db/schema'
 import { hashPassword } from '../server/utils/auth'
 import { hashDeviceToken, isValidDeviceToken } from '../server/utils/device-auth'
+import { DEFAULT_EDGE_CONFIG } from '../shared/schemas/edge'
 
 async function seedAdmin() {
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase()
@@ -70,28 +71,65 @@ async function seedDevice(siteId: string) {
     throw new Error('EDGE_TOKEN harus berformat em_ diikuti 64 karakter hex')
   }
 
-  await db
+  const [device] = await db
     .insert(devices)
     .values({
       siteId,
       serial,
       tokenHash: hashDeviceToken(token),
+      config: DEFAULT_EDGE_CONFIG,
     })
     .onConflictDoUpdate({
       target: devices.serial,
       set: {
         siteId,
         tokenHash: hashDeviceToken(token),
+        config: DEFAULT_EDGE_CONFIG,
         updatedAt: new Date(),
       },
     })
+    .returning({ id: devices.id })
 
   console.log(`Device ${serial} siap.`)
+  return device.id
+}
+
+async function seedSensors(deviceId: string) {
+  const rows = [
+    { deviceId, key: 'CT1-R', kind: 'current', phase: 'R', unit: 'A' },
+    { deviceId, key: 'DOOR-1', kind: 'door', phase: null, unit: 'state' },
+  ]
+
+  for (const row of rows) {
+    await db
+      .insert(sensors)
+      .values(row)
+      .onConflictDoUpdate({
+        target: [sensors.deviceId, sensors.key],
+        set: { kind: row.kind, phase: row.phase, unit: row.unit },
+      })
+  }
+
+  console.log('Sensor CT1-R dan DOOR-1 siap.')
+}
+
+async function seedCamera(deviceId: string) {
+  await db
+    .insert(cameras)
+    .values({ deviceId, key: 'CAM-1', name: 'CCTV Panel' })
+    .onConflictDoUpdate({
+      target: [cameras.deviceId, cameras.key],
+      set: { name: 'CCTV Panel', enabled: true },
+    })
+
+  console.log('Camera CAM-1 siap.')
 }
 
 async function seed() {
   const siteId = await seedSite()
-  await seedDevice(siteId)
+  const deviceId = await seedDevice(siteId)
+  await seedSensors(deviceId)
+  await seedCamera(deviceId)
   await seedAdmin()
 }
 

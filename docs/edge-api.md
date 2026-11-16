@@ -53,3 +53,35 @@ Response `200`:
   "config_version": 1
 }
 ```
+
+## GET /api/v1/edge/config
+
+Mengembalikan daftar sensor, kamera aktif, threshold, upload policy, dan `config_version` device.
+
+Response `200`:
+
+```json
+{
+  "device_id": "…",
+  "config_version": 1,
+  "sensors": [
+    { "key": "CT1-R", "kind": "current", "phase": "R", "unit": "A" },
+    { "key": "DOOR-1", "kind": "door", "phase": null, "unit": "state" }
+  ],
+  "cameras": [
+    { "key": "CAM-1", "name": "CCTV Panel" }
+  ],
+  "thresholds": {
+    "current_drop_a": 5,
+    "current_surge_a": 60,
+    "door_open_warn_s": 120
+  },
+  "upload": {
+    "part_size": 5242880,
+    "max_file_bytes": 5242880,
+    "max_duration_ms": 30000
+  }
+}
+```
+
+`thresholds` dan `upload` dibaca dari `devices.config`. Jika config tidak valid, server memakai default.
