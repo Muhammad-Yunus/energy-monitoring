@@ -209,9 +209,10 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 
 | Tipe | Deskripsi |
 |---|---|
-| `ANOMALY_CURRENT_DROP` | Arus turun drastis, indikasi pemutusan daya |
-| `ANOMALY_CURRENT_SURGE` | Arus naik tidak normal |
-| `ANOMALY_ZERO_CURRENT` | Arus mendekati nol |
+| `CURRENT_NORMAL` | Arus normal |
+| `CURRENT_ANOMALY_WARNING` | Anomali arus dengan severity peringatan |
+| `CURRENT_ANOMALY_CRITICAL` | Anomali arus dengan severity kritis |
+| `CURRENT_ANOMALY_ZERO` | Arus mendekati nol |
 | `DOOR_OPEN` | Pintu panel terbuka |
 | `DOOR_CLOSE` | Pintu panel tertutup |
 
@@ -219,7 +220,7 @@ Device offline **bukan** tipe event. Status offline diturunkan dari `devices.las
 
 ### 10.2 Status dan Severity
 
-- Severity event: `info`, `warning`, `critical`.
+- Severity event: `info`, `warning`, `critical`. Severity **diturunkan server dari `type`**, bukan dikirim oleh edge: `CURRENT_NORMAL` → `info`, `CURRENT_ANOMALY_WARNING` → `warning`, `CURRENT_ANOMALY_CRITICAL` dan `CURRENT_ANOMALY_ZERO` → `critical`, `DOOR_OPEN` dan `DOOR_CLOSE` → `warning`.
 - Status event: `open`, `acknowledged`, `resolved`, `false_positive`, dengan `acknowledged_at`, `acknowledged_by`, `resolved_at`, `resolved_by`, dan `note`.
 - Status recording: `pending`, `uploading`, `uploaded`, `processing`, `ready`, `failed`.
 - Status device: `online`, `offline` (diturunkan dari `last_seen_at`, bukan disimpan sebagai event).

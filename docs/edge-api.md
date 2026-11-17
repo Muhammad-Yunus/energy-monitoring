@@ -41,7 +41,7 @@ Request:
   "uptime_s": 3600,
   "disk_free_bytes": 3200000000,
   "queue_depth": 0,
-  "sensor_status": { "CT1-R": "ok", "DOOR-1": "ok" }
+  "sensor_status": { "AmpPhase1": "ok", "DOOR-1": "ok" }
 }
 ```
 
@@ -65,7 +65,7 @@ Response `200`:
   "device_id": "…",
   "config_version": 1,
   "sensors": [
-    { "key": "CT1-R", "kind": "current", "phase": "R", "unit": "A" },
+    { "key": "AmpPhase1", "kind": "current", "phase": "R", "unit": "A" },
     { "key": "DOOR-1", "kind": "door", "phase": null, "unit": "state" }
   ],
   "cameras": [
@@ -98,7 +98,7 @@ Request:
   "device_ts": "2026-11-16T10:00:00+07:00",
   "readings": [
     {
-      "sensor": "CT1-R",
+      "sensor": "AmpPhase1",
       "ts": "2026-11-16T10:00:00+07:00",
       "value": 32.4,
       "quality": "good"
@@ -136,17 +136,13 @@ Request:
     {
       "event_uid": "evt-20261116-0001",
       "action": "START",
-      "type": "ANOMALY_CURRENT_DROP",
-      "severity": "critical",
+      "type": "CURRENT_ANOMALY_WARNING",
       "occurred_at": "2026-11-16T10:02:13+07:00",
-      "sensor": "CT1-R",
+      "sensor": "AmpPhase1",
       "details": {
-        "baseline_a": 32.4,
-        "observed_a": 0.3,
-        "threshold_a": 5.0,
-        "delta_pct": -99.1,
-        "rule_id": "CUR_DROP_V1",
-        "confidence": 0.97
+        "state": "CURRENT_ANOMALY_WARNING",
+        "value": 58.2,
+        "unit": "A"
       },
       "video_requested": true
     }
@@ -167,11 +163,11 @@ Response `200`:
 Aturan:
 
 - `event_uid` harus cocok `^[A-Za-z0-9_-]{8,64}$` dan unik per device.
-- `type`: `ANOMALY_CURRENT_DROP`, `ANOMALY_CURRENT_SURGE`, `ANOMALY_ZERO_CURRENT`, `DOOR_OPEN`, `DOOR_CLOSE`.
-- `severity`: `info`, `warning`, `critical`.
+- `type`: `CURRENT_NORMAL`, `CURRENT_ANOMALY_WARNING`, `CURRENT_ANOMALY_CRITICAL`, `CURRENT_ANOMALY_ZERO`, `DOOR_OPEN`, `DOOR_CLOSE`.
+- `severity` tidak dikirim oleh edge; server menurunkannya dari `type`: `CURRENT_NORMAL` → `info`, `CURRENT_ANOMALY_WARNING` → `warning`, `CURRENT_ANOMALY_CRITICAL`/`CURRENT_ANOMALY_ZERO` → `critical`, `DOOR_OPEN`/`DOOR_CLOSE` → `warning`.
 - `action`: `START`, `END`, `UPDATE`.
 - `START` membuat event dengan status `open`. Retry `START` dengan `event_uid` sama dihitung `duplicated` dan tidak mengubah data.
-- `END`/`UPDATE` mengisi `ended_at`, menggabungkan `details`, dan memperbarui `type`/`severity`, tetapi tidak pernah menimpa `status`, `note`, atau kolom workflow.
+- `END`/`UPDATE` mengisi `ended_at`, menggabungkan `details`, dan memperbarui `type`; severity dihitung ulang dari `type`. `status`, `note`, dan kolom workflow tidak pernah ditimpa.
 - `END`/`UPDATE` tanpa `START` tetap disimpan sebagai event mandiri.
 - Recording dengan `event_uid` sama otomatis ditautkan ke event.
 
@@ -184,7 +180,6 @@ Event pintu:
       "event_uid": "evt-20261116-0002",
       "action": "START",
       "type": "DOOR_OPEN",
-      "severity": "warning",
       "occurred_at": "2026-11-16T10:02:13+07:00",
       "sensor": "DOOR-1",
       "group_uid": "door-session-1",
@@ -194,7 +189,6 @@ Event pintu:
       "event_uid": "evt-20261116-0003",
       "action": "START",
       "type": "DOOR_CLOSE",
-      "severity": "warning",
       "occurred_at": "2026-11-16T10:04:43+07:00",
       "sensor": "DOOR-1",
       "group_uid": "door-session-1",

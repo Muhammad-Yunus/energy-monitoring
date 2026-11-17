@@ -89,9 +89,10 @@ const events = computed(() => data.value?.events ?? [])
 const recordings = computed(() => data.value?.recordings ?? [])
 
 const typeLabels: Record<string, string> = {
-  ANOMALY_CURRENT_DROP: 'Arus turun',
-  ANOMALY_CURRENT_SURGE: 'Arus lonjak',
-  ANOMALY_ZERO_CURRENT: 'Arus nol',
+  CURRENT_NORMAL: 'Arus normal',
+  CURRENT_ANOMALY_WARNING: 'Anomali: peringatan',
+  CURRENT_ANOMALY_CRITICAL: 'Anomali: kritis',
+  CURRENT_ANOMALY_ZERO: 'Arus nol',
   DOOR_OPEN: 'Pintu terbuka',
   DOOR_CLOSE: 'Pintu tertutup',
 }
@@ -197,7 +198,7 @@ function bucketLabel(seconds: number) {
               <h2 class="font-medium">
                 Arus terakhir
               </h2>
-              <span class="text-xs text-muted">{{ latest?.sensor ?? 'CT1-R' }}</span>
+              <span class="text-xs text-muted">{{ latest?.sensor ?? 'AmpPhase1' }}</span>
             </div>
           </template>
 

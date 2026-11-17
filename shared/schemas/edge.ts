@@ -58,18 +58,33 @@ export const telemetrySchema = z.object({
 export type TelemetryInput = z.infer<typeof telemetrySchema>
 
 export const EVENT_TYPES = [
-  'ANOMALY_CURRENT_DROP',
-  'ANOMALY_CURRENT_SURGE',
-  'ANOMALY_ZERO_CURRENT',
+  'CURRENT_NORMAL',
+  'CURRENT_ANOMALY_WARNING',
+  'CURRENT_ANOMALY_CRITICAL',
+  'CURRENT_ANOMALY_ZERO',
   'DOOR_OPEN',
   'DOOR_CLOSE',
 ] as const
+
+export type EventType = typeof EVENT_TYPES[number]
+
+const EVENT_SEVERITY: Record<EventType, 'info' | 'warning' | 'critical'> = {
+  CURRENT_NORMAL: 'info',
+  CURRENT_ANOMALY_WARNING: 'warning',
+  CURRENT_ANOMALY_CRITICAL: 'critical',
+  CURRENT_ANOMALY_ZERO: 'critical',
+  DOOR_OPEN: 'warning',
+  DOOR_CLOSE: 'warning',
+}
+
+export function eventSeverity(type: EventType) {
+  return EVENT_SEVERITY[type]
+}
 
 export const eventInputSchema = z.object({
   event_uid: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/),
   action: z.enum(['START', 'END', 'UPDATE']),
   type: z.enum(EVENT_TYPES),
-  severity: z.enum(['info', 'warning', 'critical']),
   occurred_at: z.iso.datetime({ offset: true }),
   sensor: z.string().trim().min(1).max(50).optional(),
   group_uid: z.string().trim().min(1).max(64).optional(),

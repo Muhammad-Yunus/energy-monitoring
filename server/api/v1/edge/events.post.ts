@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
-import { eventsBatchSchema } from '#shared/schemas/edge'
+import { eventSeverity, eventsBatchSchema } from '#shared/schemas/edge'
 import { db } from '../../../db'
 import { cameras, devices, events, recordings, sensors } from '../../../db/schema'
 import { bus } from '../../../utils/bus'
@@ -100,7 +100,7 @@ export default defineEventHandler(async (event) => {
             siteId: device.siteId,
             sensorId,
             type: item.type,
-            severity: item.severity,
+            severity: eventSeverity(item.type),
             action: item.action,
             occurredAt,
             receivedAt: now,
@@ -116,7 +116,7 @@ export default defineEventHandler(async (event) => {
           recordDoorEffect(item, occurredAt)
           emissions.push({
             event: 'event.created',
-            data: { id: created.id, event_uid: item.event_uid, type: item.type, severity: item.severity },
+            data: { id: created.id, event_uid: item.event_uid, type: item.type, severity: eventSeverity(item.type) },
           })
         } else {
           duplicated++
@@ -130,7 +130,7 @@ export default defineEventHandler(async (event) => {
         .set({
           action: item.action,
           type: item.type,
-          severity: item.severity,
+          severity: eventSeverity(item.type),
           endedAt: occurredAt,
           details: sql`${events.details} || ${JSON.stringify(item.details)}::jsonb`,
           receivedAt: now,
@@ -145,7 +145,7 @@ export default defineEventHandler(async (event) => {
         recordDoorEffect(item, occurredAt)
         emissions.push({
           event: 'event.updated',
-          data: { id: updated.id, event_uid: item.event_uid, type: item.type, severity: item.severity },
+          data: { id: updated.id, event_uid: item.event_uid, type: item.type, severity: eventSeverity(item.type) },
         })
         continue
       }
@@ -159,7 +159,7 @@ export default defineEventHandler(async (event) => {
           siteId: device.siteId,
           sensorId,
           type: item.type,
-          severity: item.severity,
+          severity: eventSeverity(item.type),
           action: item.action,
           occurredAt,
           receivedAt: now,
@@ -180,7 +180,7 @@ export default defineEventHandler(async (event) => {
       recordDoorEffect(item, occurredAt)
       emissions.push({
         event: 'event.created',
-        data: { id: created.id, event_uid: item.event_uid, type: item.type, severity: item.severity },
+        data: { id: created.id, event_uid: item.event_uid, type: item.type, severity: eventSeverity(item.type) },
       })
     }
 

@@ -327,7 +327,7 @@ Request:
   "uptime_s": 3600,
   "disk_free_bytes": 3200000000,
   "queue_depth": 0,
-  "sensor_status": { "CT1-R": "ok", "DOOR-1": "ok" }
+  "sensor_status": { "AmpPhase1": "ok", "DOOR-1": "ok" }
 }
 ```
 
@@ -349,7 +349,7 @@ Response berisi sensor, camera, threshold, dan upload policy:
   "device_id": "...",
   "config_version": 1,
   "sensors": [
-    { "key": "CT1-R", "kind": "current", "phase": "R", "unit": "A" }
+    { "key": "AmpPhase1", "kind": "current", "phase": "R", "unit": "A" }
   ],
   "cameras": [
     { "key": "CAM-1", "name": "CCTV Panel" }
@@ -377,7 +377,7 @@ Request:
   "device_ts": "2026-11-16T10:00:00+07:00",
   "readings": [
     {
-      "sensor": "CT1-R",
+      "sensor": "AmpPhase1",
       "ts": "2026-11-16T10:00:00+07:00",
       "value": 32.4,
       "quality": "good"
@@ -414,17 +414,13 @@ Request:
     {
       "event_uid": "evt-20261116-0001",
       "action": "START",
-      "type": "ANOMALY_CURRENT_DROP",
-      "severity": "critical",
+      "type": "CURRENT_ANOMALY_WARNING",
       "occurred_at": "2026-11-16T10:02:13+07:00",
-      "sensor": "CT1-R",
+      "sensor": "AmpPhase1",
       "details": {
-        "baseline_a": 32.4,
-        "observed_a": 0.3,
-        "threshold_a": 5.0,
-        "delta_pct": -99.1,
-        "rule_id": "CUR_DROP_V1",
-        "confidence": 0.97
+        "state": "CURRENT_ANOMALY_WARNING",
+        "value": 58.2,
+        "unit": "A"
       },
       "video_requested": true
     }
@@ -439,7 +435,6 @@ Door open/close memakai `group_uid` yang sama:
   "event_uid": "evt-20261116-0002",
   "action": "START",
   "type": "DOOR_OPEN",
-  "severity": "warning",
   "occurred_at": "...",
   "sensor": "DOOR-1",
   "group_uid": "door-session-1",
@@ -451,6 +446,8 @@ Aturan:
 
 - Maks 100 event/batch.
 - `event_uid` wajib cocok `^[A-Za-z0-9_-]{8,64}$`.
+- `type`: `CURRENT_NORMAL`, `CURRENT_ANOMALY_WARNING`, `CURRENT_ANOMALY_CRITICAL`, `CURRENT_ANOMALY_ZERO`, `DOOR_OPEN`, `DOOR_CLOSE`.
+- `severity` tidak dikirim edge; server menurunkannya dari `type` (`NORMAL` → `info`, `WARNING` → `warning`, `CRITICAL`/`ZERO` → `critical`, `DOOR_*` → `warning`).
 - `(device_id, event_uid)` unik; duplikat dibalas `200` dengan `duplicated` bertambah, bukan `409`.
 - `START` membuat event `open`.
 - `END`/`UPDATE` mengisi `ended_at` dan menggabungkan `details`, tanpa menimpa `status`.
@@ -788,10 +785,10 @@ Contoh payload:
 
 ```
 event: reading
-data: {"sensor":"CT1-R","ts":"2026-11-16T03:00:00.000Z","value":32.4}
+data: {"sensor":"AmpPhase1","ts":"2026-11-16T03:00:00.000Z","value":32.4}
 
 event: event.created
-data: {"id":"...","type":"ANOMALY_CURRENT_DROP","severity":"critical"}
+data: {"id":"...","type":"CURRENT_ANOMALY_CRITICAL","severity":"critical"}
 ```
 
 ---
@@ -997,7 +994,7 @@ Membuat:
 
 - 1 site: Gardu Demo.
 - 1 device: `EDGE-001` dengan token hash.
-- 1 sensor: `CT1-R`, kind `current`, phase `R`.
+- 1 sensor: `AmpPhase1`, kind `current`, phase `R`.
 - 1 sensor: `DOOR-1`, kind `door`.
 - 1 camera: `CAM-1`.
 - 1 admin: dari `ADMIN_EMAIL`/`ADMIN_PASSWORD`.

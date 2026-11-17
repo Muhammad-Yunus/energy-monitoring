@@ -96,7 +96,7 @@ async function seedDevice(siteId: string) {
 
 async function seedSensors(deviceId: string) {
   const rows = [
-    { deviceId, key: 'CT1-R', kind: 'current', phase: 'R', unit: 'A' },
+    { deviceId, key: 'AmpPhase1', kind: 'current', phase: 'R', unit: 'A' },
     { deviceId, key: 'DOOR-1', kind: 'door', phase: null, unit: 'state' },
   ]
 
@@ -110,7 +110,7 @@ async function seedSensors(deviceId: string) {
       })
   }
 
-  console.log('Sensor CT1-R dan DOOR-1 siap.')
+  console.log('Sensor AmpPhase1 dan DOOR-1 siap.')
 }
 
 async function seedCamera(deviceId: string) {
