@@ -294,3 +294,46 @@ Aturan:
 - Permintaan parts pertama mengubah status upload dan recording menjadi `uploading`.
 - Edge mengunggah part dengan `PUT` ke `url` dan menyimpan header `ETag` untuk finalisasi.
 - Recording atau sesi yang tidak ada dibalas `404`; sesi selesai/abort/kedaluwarsa dibalas `409`.
+
+## GET /api/v1/edge/recordings/:id
+
+Mengembalikan status sesi upload beserta part yang sudah diterima RustFS.
+
+Response `200`:
+
+```json
+{
+  "recording_id": "...",
+  "status": "uploading",
+  "upload_status": "uploading",
+  "total_parts": 1,
+  "parts": [
+    { "part_number": 1, "size": 104814, "etag": "\"a8d765...\"" }
+  ],
+  "expires_at": "2026-11-18T03:34:02.896Z"
+}
+```
+
+Aturan:
+
+- Recording harus milik device yang terautentikasi.
+- `status` adalah status recording (`pending`, `uploading`, `processing`, `ready`, `failed`); `upload_status` adalah status sesi (`pending`, `uploading`, `completed`, `aborted`).
+- `parts` dibaca dari RustFS dan kosong jika sesi sudah `completed` atau `aborted`.
+- Resume tidak didukung; edge memulai sesi baru bila upload terputus.
+
+## POST /api/v1/edge/recordings/:id/abort
+
+Membatalkan multipart upload di RustFS, menandai sesi `aborted`, dan recording `failed`.
+
+Response `200`:
+
+```json
+{ "recording_id": "...", "status": "failed" }
+```
+
+Aturan:
+
+- Recording harus milik device yang terautentikasi.
+- Abort dapat diulang; sesi yang sudah `aborted` tetap dibalas `200`.
+- Sesi `completed` dibalas `409`.
+- Recording atau sesi yang tidak ada dibalas `404`.
