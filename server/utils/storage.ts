@@ -10,6 +10,8 @@ const base = {
     secretAccessKey: process.env.S3_SECRET_KEY ?? '',
   },
   forcePathStyle: process.env.S3_FORCE_PATH_STYLE !== 'false',
+  requestChecksumCalculation: 'WHEN_REQUIRED' as const,
+  responseChecksumValidation: 'WHEN_REQUIRED' as const,
 }
 
 export const s3Internal = new S3Client({

@@ -261,3 +261,36 @@ Aturan:
 - Object key: `recordings/{yyyy}/{mm}/{dd}/{event_uid}/{recording_id}.mp4`.
 - Jika event dengan `event_uid` sama sudah ada, recording langsung ditautkan lewat `event_id`.
 - Recording baru berstatus `pending`; upload part mengikuti endpoint parts pada FR-11.
+
+## POST /api/v1/edge/recordings/:id/parts
+
+Membuat presigned URL untuk mengunggah part langsung ke RustFS. URL memakai endpoint publik (`S3_PUBLIC_ENDPOINT`) dan berlaku 15 menit.
+
+Request:
+
+```json
+{ "part_numbers": [1] }
+```
+
+Response `200`:
+
+```json
+{
+  "parts": [
+    {
+      "part_number": 1,
+      "url": "http://192.168.1.112:9000/recordings/...?X-Amz-Signature=...",
+      "expires_at": "2026-11-16T03:15:00.000Z"
+    }
+  ]
+}
+```
+
+Aturan:
+
+- Recording harus milik device yang terautentikasi.
+- `part_numbers` berisi 1–100 nomor, tidak boleh duplikat, dan tidak boleh melebihi `total_parts`.
+- Sesi harus berstatus `pending` atau `uploading` dan belum kedaluwarsa.
+- Permintaan parts pertama mengubah status upload dan recording menjadi `uploading`.
+- Edge mengunggah part dengan `PUT` ke `url` dan menyimpan header `ETag` untuk finalisasi.
+- Recording atau sesi yang tidak ada dibalas `404`; sesi selesai/abort/kedaluwarsa dibalas `409`.

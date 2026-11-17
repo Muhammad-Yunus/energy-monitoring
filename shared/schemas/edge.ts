@@ -123,3 +123,17 @@ export const recordingSessionSchema = z.object({
 })
 
 export type RecordingSessionInput = z.infer<typeof recordingSessionSchema>
+
+export const uploadPartsSchema = z.object({
+  part_numbers: z.array(z.number().int().min(1)).min(1).max(100),
+}).superRefine((value, ctx) => {
+  if (new Set(value.part_numbers).size !== value.part_numbers.length) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['part_numbers'],
+      message: 'part_numbers tidak boleh duplikat',
+    })
+  }
+})
+
+export type UploadPartsInput = z.infer<typeof uploadPartsSchema>
