@@ -185,6 +185,9 @@ function bucketLabel(seconds: number) {
             {{ connected ? 'Live' : 'Polling 5 detik' }}
           </UBadge>
           <span class="text-muted">{{ user?.email }}</span>
+          <UButton to="/events" color="neutral" variant="outline" size="sm">
+            Event
+          </UButton>
           <UButton color="neutral" variant="outline" size="sm" @click="logout">
             Keluar
           </UButton>
