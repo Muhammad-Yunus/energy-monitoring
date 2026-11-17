@@ -137,3 +137,22 @@ export const uploadPartsSchema = z.object({
 })
 
 export type UploadPartsInput = z.infer<typeof uploadPartsSchema>
+
+export const completeUploadSchema = z.object({
+  parts: z.array(z.object({
+    part_number: z.number().int().min(1),
+    etag: z.string().min(1).max(128),
+  })).min(1).max(100),
+}).superRefine((value, ctx) => {
+  const numbers = value.parts.map(part => part.part_number)
+
+  if (new Set(numbers).size !== numbers.length) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['parts'],
+      message: 'part_number tidak boleh duplikat',
+    })
+  }
+})
+
+export type CompleteUploadInput = z.infer<typeof completeUploadSchema>

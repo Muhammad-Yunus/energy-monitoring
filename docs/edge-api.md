@@ -337,3 +337,37 @@ Aturan:
 - Abort dapat diulang; sesi yang sudah `aborted` tetap dibalas `200`.
 - Sesi `completed` dibalas `409`.
 - Recording atau sesi yang tidak ada dibalas `404`.
+
+## POST /api/v1/edge/recordings/:id/complete
+
+Menyelesaikan multipart upload dan memulai finalisasi video di server.
+
+Request:
+
+```json
+{
+  "parts": [
+    { "part_number": 1, "etag": "\"692b8521b7b325e85b45a4d5ee9a8eb2\"" }
+  ]
+}
+```
+
+Response `200`:
+
+```json
+{ "recording_id": "...", "status": "processing" }
+```
+
+Aturan:
+
+- Recording harus milik device yang terautentikasi.
+- `parts` harus memuat tepat semua part `1..total_parts`, tanpa duplikat.
+- `etag` boleh dikirim dengan atau tanpa tanda kutip.
+- Sesi harus `pending`/`uploading` dan belum kedaluwarsa.
+- Sesi `aborted` atau `completed` dibalas `409`; part yang tidak cocok dibalas `409`.
+- Setelah `CompleteMultipartUpload` sukses, server mengubah status upload menjadi `completed` dan recording menjadi `processing`, lalu menjalankan finalisasi asynchronous:
+  - `HeadObject` untuk memastikan ukuran sesuai `size_bytes`.
+  - Unduh object ke temp file sambil menghitung SHA-256, lalu bandingkan dengan `sha256` edge.
+  - `ffprobe` untuk memastikan codec `h264` dan durasi sesuai `duration_ms` (toleransi 1,5 detik).
+  - Buat thumbnail JPEG 640 px di `thumbnails/{yyyy}/{mm}/{dd}/{recording_id}.jpg`.
+- Jika semua valid, recording menjadi `ready` dan `thumbnail_key` terisi. Jika gagal, recording menjadi `failed`.
