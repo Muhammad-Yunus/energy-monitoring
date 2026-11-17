@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ReadingRange } from '~/composables/useReadings'
+
 interface DashboardDevice {
   id: string
   serial: string
@@ -38,8 +40,32 @@ interface DashboardSnapshot {
 }
 
 const { data, refresh } = await useFetch<DashboardSnapshot>('/api/v1/dashboard')
-const { connected, reading } = useLiveStream(() => refresh())
 const { user, logout } = useAuth()
+
+const range = ref<ReadingRange>('1h')
+const { data: history, pending: historyPending, error: historyError, load: loadHistory } = useReadings(range)
+
+const rangeOptions: { value: ReadingRange, label: string }[] = [
+  { value: '1h', label: '1 jam' },
+  { value: '6h', label: '6 jam' },
+  { value: '24h', label: '24 jam' },
+]
+
+let lastHistoryRefresh = 0
+
+function refreshHistoryThrottled() {
+  const now = Date.now()
+
+  if (now - lastHistoryRefresh < 5000) return
+
+  lastHistoryRefresh = now
+  void loadHistory()
+}
+
+const { connected, reading } = useLiveStream(() => {
+  void refresh()
+  refreshHistoryThrottled()
+})
 
 const timeFormat = new Intl.DateTimeFormat('id-ID', {
   timeZone: 'Asia/Jakarta',
@@ -132,6 +158,12 @@ function playbackUrl(id: string) {
 function thumbnailUrl(id: string) {
   return `/api/v1/recordings/${id}/thumbnail`
 }
+
+function bucketLabel(seconds: number) {
+  if (seconds < 60) return `${seconds} detik`
+  if (seconds < 3600) return `${Math.round(seconds / 60)} menit`
+  return `${Math.round(seconds / 3600)} jam`
+}
 </script>
 
 <template>
@@ -214,6 +246,54 @@ function thumbnailUrl(id: string) {
           </div>
         </UCard>
       </div>
+
+      <UCard>
+        <template #header>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <h2 class="font-medium">
+                Histori arus
+              </h2>
+              <span v-if="historyPending" class="text-xs text-muted">Memuat…</span>
+            </div>
+
+            <div class="flex gap-1">
+              <UButton
+                v-for="option in rangeOptions"
+                :key="option.value"
+                size="xs"
+                :color="range === option.value ? 'primary' : 'neutral'"
+                :variant="range === option.value ? 'solid' : 'outline'"
+                @click="range = option.value"
+              >
+                {{ option.label }}
+              </UButton>
+            </div>
+          </div>
+        </template>
+
+        <UAlert
+          v-if="historyError && !history"
+          color="error"
+          variant="subtle"
+          :title="historyError"
+        />
+
+        <USkeleton v-else-if="historyPending && !history" class="h-72 w-full" />
+
+        <div v-else-if="!history?.points.length" class="flex h-72 items-center justify-center text-sm text-muted">
+          Belum ada reading pada rentang ini.
+        </div>
+
+        <template v-else>
+          <ClientOnly>
+            <CurrentChart :points="history.points" />
+          </ClientOnly>
+          <p class="mt-3 text-xs text-muted">
+            {{ history.sensor ?? '—' }} · bucket {{ bucketLabel(history.bucket_seconds) }} · {{ history.points.length }} titik
+          </p>
+        </template>
+      </UCard>
 
       <div class="grid gap-4 lg:grid-cols-2">
         <UCard>
