@@ -50,6 +50,12 @@ interface EventDetailResponse {
   door_events: DoorEvent[]
 }
 
+interface PatchResponse {
+  event: DetailEvent
+}
+
+type WorkflowStatus = 'acknowledged' | 'resolved' | 'false_positive'
+
 const route = useRoute()
 const detailUrl = computed(() => `/api/v1/events/${encodeURIComponent(String(route.params.id ?? ''))}`)
 const { data, pending, error } = await useFetch<EventDetailResponse>(detailUrl)
@@ -143,6 +149,53 @@ function durationLabel(value: number | null) {
 }
 
 const readyRecordings = computed(() => (data.value?.recordings ?? []).filter(recording => recording.status === 'ready'))
+
+const note = ref('')
+const workflowPending = ref(false)
+const workflowError = ref('')
+const workflowSuccess = ref('')
+
+watch(() => data.value?.event.note, (value) => {
+  if (value !== undefined) note.value = value ?? ''
+}, { immediate: true })
+
+const workflowActions: { status: WorkflowStatus, label: string }[] = [
+  { status: 'acknowledged', label: 'Acknowledge' },
+  { status: 'resolved', label: 'Resolve' },
+  { status: 'false_positive', label: 'False positive' },
+]
+
+const allowedActions = computed(() => {
+  const status = data.value?.event.status
+
+  if (status === 'open') return workflowActions.filter(action => action.status === 'acknowledged')
+  if (status === 'acknowledged') return workflowActions.filter(action => action.status !== 'acknowledged')
+  return []
+})
+
+async function applyAction(status: WorkflowStatus) {
+  workflowPending.value = true
+  workflowError.value = ''
+  workflowSuccess.value = ''
+
+  try {
+    const response = await $fetch<PatchResponse>(detailUrl.value, {
+      method: 'PATCH',
+      body: { status, note: note.value },
+    })
+
+    if (data.value) data.value.event = response.event
+    note.value = response.event.note ?? ''
+    workflowSuccess.value = `Status diperbarui menjadi ${statusLabels[status] ?? status}.`
+  }
+  catch (error) {
+    const detail = error as { statusMessage?: string, data?: { error?: { message?: string } } }
+    workflowError.value = detail.data?.error?.message ?? detail.statusMessage ?? 'Gagal memperbarui status event.'
+  }
+  finally {
+    workflowPending.value = false
+  }
+}
 </script>
 
 <template>
@@ -214,14 +267,63 @@ const readyRecordings = computed(() => (data.value?.recordings ?? []).filter(rec
             </div>
           </div>
 
-          <UAlert
-            v-if="data.event.note"
-            class="mt-4"
-            color="info"
-            variant="subtle"
-            title="Catatan operator"
-            :description="data.event.note"
-          />
+          <div class="mt-4 grid gap-3 border-t pt-4 text-sm sm:grid-cols-2">
+            <div>
+              <p class="text-xs text-muted">Di-acknowledge</p>
+              <p>{{ data.event.acknowledged_at ? formatTime(data.event.acknowledged_at) : '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-muted">Diselesaikan</p>
+              <p>{{ data.event.resolved_at ? formatTime(data.event.resolved_at) : '—' }}</p>
+            </div>
+          </div>
+        </UCard>
+
+        <UCard>
+          <template #header>
+            <h2 class="font-medium">
+              Aksi dan catatan
+            </h2>
+          </template>
+
+          <div class="space-y-4">
+            <UTextarea
+              v-model="note"
+              label="Catatan operator"
+              placeholder="Tulis hasil investigasi…"
+              :rows="3"
+              :disabled="!allowedActions.length || workflowPending"
+            />
+
+            <UAlert
+              v-if="workflowError"
+              color="error"
+              variant="subtle"
+              :title="workflowError"
+            />
+            <UAlert
+              v-if="workflowSuccess"
+              color="success"
+              variant="subtle"
+              :title="workflowSuccess"
+            />
+
+            <div class="flex flex-wrap gap-2">
+              <UButton
+                v-for="action in allowedActions"
+                :key="action.status"
+                :color="action.status === 'acknowledged' ? 'primary' : action.status === 'resolved' ? 'success' : 'neutral'"
+                :loading="workflowPending"
+                :disabled="workflowPending"
+                @click="applyAction(action.status)"
+              >
+                {{ action.label }}
+              </UButton>
+              <span v-if="!allowedActions.length" class="text-sm text-muted">
+                Event ini sudah final; status dan catatan tidak dapat diubah lagi.
+              </span>
+            </div>
+          </div>
         </UCard>
 
         <UCard>
