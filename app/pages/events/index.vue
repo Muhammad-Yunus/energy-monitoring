@@ -213,7 +213,9 @@ function durationLabel(value: number | null) {
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-              <span class="text-sm font-medium">{{ typeLabels[item.type] ?? item.type }}</span>
+              <NuxtLink :to="`/events/${item.id}`" class="text-sm font-medium hover:underline">
+                {{ typeLabels[item.type] ?? item.type }}
+              </NuxtLink>
               <UBadge :color="severityColor(item.severity)" variant="subtle" size="xs">
                 {{ severityLabels[item.severity] ?? item.severity }}
               </UBadge>
