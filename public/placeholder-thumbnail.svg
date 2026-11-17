@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-label="Thumbnail belum tersedia">
+  <rect width="640" height="360" fill="#111827"/>
+  <g fill="none" stroke="#4b5563" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="248" y="132" width="144" height="96" rx="12"/>
+    <path d="M216 156l32-24v96l-32-24z"/>
+  </g>
+  <text x="320" y="276" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#9ca3af">Thumbnail belum tersedia</text>
+</svg>
