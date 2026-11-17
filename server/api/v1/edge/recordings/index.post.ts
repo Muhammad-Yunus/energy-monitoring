@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm'
 import { DEFAULT_EDGE_CONFIG, recordingSessionSchema } from '#shared/schemas/edge'
 import { db } from '../../../../db'
 import { cameras, events, recordings, recordingUploads } from '../../../../db/schema'
+import { emitRecordingStatus } from '../../../../utils/bus'
 import { s3Bucket, s3Internal } from '../../../../utils/storage'
 import type { AuthDevice } from '../../../../utils/device-auth'
 
@@ -176,6 +177,14 @@ export default defineEventHandler(async (event) => {
       },
     }
   }
+
+  emitRecordingStatus({
+    id: recordingId,
+    event_uid: input.event_uid,
+    status: 'pending',
+    duration_ms: input.duration_ms,
+    started_at: startedAt.toISOString(),
+  })
 
   return {
     recording_id: recordingId,

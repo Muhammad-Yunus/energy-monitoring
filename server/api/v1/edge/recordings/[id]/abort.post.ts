@@ -2,6 +2,7 @@ import { AbortMultipartUploadCommand } from '@aws-sdk/client-s3'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../../../../../db'
 import { cameras, recordings, recordingUploads } from '../../../../../db/schema'
+import { emitRecordingStatus } from '../../../../../utils/bus'
 import { s3Bucket, s3Internal } from '../../../../../utils/storage'
 import type { AuthDevice } from '../../../../../utils/device-auth'
 
@@ -35,6 +36,9 @@ export default defineEventHandler(async (event) => {
   const [row] = await db
     .select({
       objectKey: recordings.objectKey,
+      eventUid: recordings.eventUid,
+      durationMs: recordings.durationMs,
+      startedAt: recordings.startedAt,
       uploadId: recordingUploads.s3UploadId,
       uploadStatus: recordingUploads.status,
     })
@@ -100,6 +104,14 @@ export default defineEventHandler(async (event) => {
       .update(recordings)
       .set({ status: 'failed' })
       .where(eq(recordings.id, id))
+  })
+
+  emitRecordingStatus({
+    id,
+    event_uid: row.eventUid,
+    status: 'failed',
+    duration_ms: row.durationMs,
+    started_at: row.startedAt.toISOString(),
   })
 
   return { recording_id: id, status: 'failed' }

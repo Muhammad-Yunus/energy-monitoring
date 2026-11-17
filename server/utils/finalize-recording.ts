@@ -11,6 +11,7 @@ import { GetObjectCommand, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/
 import { eq } from 'drizzle-orm'
 import { db } from '../db'
 import { recordings } from '../db/schema'
+import { emitRecordingStatus } from './bus'
 import { s3Bucket, s3Internal } from './storage'
 
 const execFileAsync = promisify(execFile)
@@ -24,12 +25,24 @@ function thumbnailKeyFor(startedAt: Date, recordingId: string) {
   return `thumbnails/${year}/${month}/${day}/${recordingId}.jpg`
 }
 
-async function markFailed(recordingId: string) {
-  await db
-    .update(recordings)
-    .set({ status: 'failed' })
-    .where(eq(recordings.id, recordingId))
-    .catch(error => console.error('recordings: gagal menandai failed', recordingId, error instanceof Error ? error.message : error))
+async function markFailed(row: { id: string, eventUid: string, durationMs: number, startedAt: Date }) {
+  try {
+    await db
+      .update(recordings)
+      .set({ status: 'failed' })
+      .where(eq(recordings.id, row.id))
+
+    emitRecordingStatus({
+      id: row.id,
+      event_uid: row.eventUid,
+      status: 'failed',
+      duration_ms: row.durationMs,
+      started_at: row.startedAt.toISOString(),
+    })
+  }
+  catch (error) {
+    console.error('recordings: gagal menandai failed', row.id, error instanceof Error ? error.message : error)
+  }
 }
 
 export async function finalizeRecording(recordingId: string) {
@@ -37,6 +50,7 @@ export async function finalizeRecording(recordingId: string) {
     .select({
       id: recordings.id,
       objectKey: recordings.objectKey,
+      eventUid: recordings.eventUid,
       sizeBytes: recordings.sizeBytes,
       durationMs: recordings.durationMs,
       sha256: recordings.sha256,
@@ -142,10 +156,18 @@ export async function finalizeRecording(recordingId: string) {
       .update(recordings)
       .set({ status: 'ready', thumbnailKey })
       .where(eq(recordings.id, row.id))
+
+    emitRecordingStatus({
+      id: row.id,
+      event_uid: row.eventUid,
+      status: 'ready',
+      duration_ms: row.durationMs,
+      started_at: row.startedAt.toISOString(),
+    })
   }
   catch (error) {
     console.error('recordings: finalisasi gagal', recordingId, error instanceof Error ? error.message : error)
-    await markFailed(recordingId)
+    await markFailed(row)
   }
   finally {
     await rm(dir, { recursive: true, force: true })

@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { completeUploadSchema } from '#shared/schemas/edge'
 import { db } from '../../../../../db'
 import { cameras, recordings, recordingUploads } from '../../../../../db/schema'
+import { emitRecordingStatus } from '../../../../../utils/bus'
 import { s3Bucket, s3Internal } from '../../../../../utils/storage'
 import { finalizeRecording } from '../../../../../utils/finalize-recording'
 import type { AuthDevice } from '../../../../../utils/device-auth'
@@ -59,6 +60,9 @@ export default defineEventHandler(async (event) => {
   const [row] = await db
     .select({
       objectKey: recordings.objectKey,
+      eventUid: recordings.eventUid,
+      durationMs: recordings.durationMs,
+      startedAt: recordings.startedAt,
       uploadId: recordingUploads.s3UploadId,
       totalParts: recordingUploads.totalParts,
       expiresAt: recordingUploads.expiresAt,
@@ -173,6 +177,14 @@ export default defineEventHandler(async (event) => {
       .update(recordings)
       .set({ status: 'processing' })
       .where(eq(recordings.id, id))
+  })
+
+  emitRecordingStatus({
+    id,
+    event_uid: row.eventUid,
+    status: 'processing',
+    duration_ms: row.durationMs,
+    started_at: row.startedAt.toISOString(),
   })
 
   void finalizeRecording(id).catch(error => {
