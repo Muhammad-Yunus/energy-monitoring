@@ -88,6 +88,18 @@ const device = computed(() => data.value?.device ?? null)
 const events = computed(() => data.value?.events ?? [])
 const recordings = computed(() => data.value?.recordings ?? [])
 
+const DOOR_WARN_MS = 120_000
+const doorEvents = computed(() => events.value.filter(event => event.type === 'DOOR_OPEN' || event.type === 'DOOR_CLOSE').slice(0, 5))
+const doorWarning = computed(() => {
+  if (device.value?.door_state !== 'open') return false
+
+  const lastOpen = events.value.find(event => event.type === 'DOOR_OPEN')
+  if (!lastOpen) return false
+
+  const serverTime = data.value ? Date.parse(data.value.server_time) : Date.now()
+  return serverTime - Date.parse(lastOpen.occurred_at) > DOOR_WARN_MS
+})
+
 const typeLabels: Record<string, string> = {
   CURRENT_NORMAL: 'Arus normal',
   CURRENT_ANOMALY_WARNING: 'Anomali: peringatan',
@@ -188,6 +200,9 @@ function bucketLabel(seconds: number) {
           <UButton to="/events" color="neutral" variant="outline" size="sm">
             Event
           </UButton>
+          <UButton to="/door" color="neutral" variant="outline" size="sm">
+            Door log
+          </UButton>
           <UButton color="neutral" variant="outline" size="sm" @click="logout">
             Keluar
           </UButton>
@@ -250,6 +265,45 @@ function bucketLabel(seconds: number) {
           </div>
         </UCard>
       </div>
+
+      <UCard>
+        <template #header>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="font-medium">
+              Door timeline
+            </h2>
+            <NuxtLink to="/door" class="text-xs text-primary hover:underline">
+              Lihat door log →
+            </NuxtLink>
+          </div>
+        </template>
+
+        <UAlert
+          v-if="doorWarning"
+          color="warning"
+          variant="subtle"
+          title="Pintu terbuka lebih dari 2 menit."
+          class="mb-3"
+        />
+
+        <div v-if="!doorEvents.length" class="py-6 text-center text-sm text-muted">
+          Belum ada event pintu.
+        </div>
+        <div v-else class="divide-y">
+          <NuxtLink
+            v-for="event in doorEvents"
+            :key="event.id"
+            :to="`/events/${event.id}`"
+            class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm hover:underline"
+          >
+            <span>{{ typeLabels[event.type] }}</span>
+            <span class="text-xs text-muted">
+              {{ formatTime(event.occurred_at) }}
+              <template v-if="formatDuration(event.duration_ms)">· {{ formatDuration(event.duration_ms) }}</template>
+            </span>
+          </NuxtLink>
+        </div>
+      </UCard>
 
       <UCard>
         <template #header>
