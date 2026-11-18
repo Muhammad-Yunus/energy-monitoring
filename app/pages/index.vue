@@ -39,8 +39,35 @@ interface DashboardSnapshot {
   recordings: DashboardRecording[]
 }
 
+interface DeviceHealth {
+  serial: string
+  online: boolean
+  last_seen_at: string | null
+  firmware: string | null
+  config_version: number
+  door_state: string | null
+  health: {
+    uptime_s: number | null
+    disk_free_bytes: number | null
+    queue_depth: number | null
+    sensor_status: Record<string, unknown>
+    received_at: string | null
+  }
+  storage: {
+    video_bytes: number
+    video_max_bytes: number
+    video_used_pct: number
+    recording_count: number
+    disk_free_bytes: number | null
+    disk_total_bytes: number | null
+  }
+}
+
 const { data, refresh } = await useFetch<DashboardSnapshot>('/api/v1/dashboard')
+const { data: healthData, refresh: refreshHealth } = await useFetch<{ devices: DeviceHealth[] }>('/api/v1/devices')
 const { user, logout } = useAuth()
+
+const deviceHealth = computed(() => healthData.value?.devices[0] ?? null)
 
 const range = ref<ReadingRange>('1h')
 const { data: history, pending: historyPending, error: historyError, load: loadHistory } = useReadings(range)
@@ -64,6 +91,7 @@ function refreshHistoryThrottled() {
 
 const { connected, reading } = useLiveStream(() => {
   void refresh()
+  void refreshHealth()
   refreshHistoryThrottled()
 })
 
@@ -172,6 +200,16 @@ function thumbnailUrl(id: string) {
   return `/api/v1/recordings/${id}/thumbnail`
 }
 
+function formatBytes(value: number | null | undefined) {
+  if (value == null) return '—'
+  if (value < 1024) return `${value} B`
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+  if (value < 1024 * 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`
+  return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`
+}
+
+const storageWarning = computed(() => (deviceHealth.value?.storage.video_used_pct ?? 0) > 80)
+
 function bucketLabel(seconds: number) {
   if (seconds < 60) return `${seconds} detik`
   if (seconds < 3600) return `${Math.round(seconds / 60)} menit`
@@ -262,6 +300,13 @@ function bucketLabel(seconds: number) {
               <span class="text-muted">Firmware / config</span>
               <span>{{ device?.firmware ?? '—' }} / v{{ device?.config_version ?? '—' }}</span>
             </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-muted">Queue / disk edge</span>
+              <span class="tabular-nums">
+                {{ deviceHealth?.health.queue_depth ?? '—' }} /
+                {{ formatBytes(deviceHealth?.health.disk_free_bytes) }}
+              </span>
+            </div>
           </div>
         </UCard>
       </div>
@@ -302,6 +347,41 @@ function bucketLabel(seconds: number) {
               <template v-if="formatDuration(event.duration_ms)">· {{ formatDuration(event.duration_ms) }}</template>
             </span>
           </NuxtLink>
+        </div>
+      </UCard>
+
+      <UCard>
+        <template #header>
+          <h2 class="font-medium">
+            Storage video
+          </h2>
+        </template>
+
+        <UAlert
+          v-if="storageWarning"
+          color="warning"
+          variant="subtle"
+          title="Pemakaian video melebihi 80% dari batas demo."
+          class="mb-3"
+        />
+
+        <div class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <p class="text-xs text-muted">Video terpakai</p>
+            <p class="tabular-nums">{{ formatBytes(deviceHealth?.storage.video_bytes) }} / {{ formatBytes(deviceHealth?.storage.video_max_bytes) }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-muted">Batas demo</p>
+            <p class="tabular-nums">{{ (deviceHealth?.storage.video_used_pct ?? 0).toFixed(1) }}%</p>
+          </div>
+          <div>
+            <p class="text-xs text-muted">Jumlah recording</p>
+            <p class="tabular-nums">{{ deviceHealth?.storage.recording_count ?? '—' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-muted">Free disk RustFS</p>
+            <p class="tabular-nums">{{ formatBytes(deviceHealth?.storage.disk_free_bytes) }}</p>
+          </div>
         </div>
       </UCard>
 
