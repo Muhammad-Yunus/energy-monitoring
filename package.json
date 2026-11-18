@@ -17,6 +17,13 @@
     "db:studio": "drizzle-kit studio",
     "seed": "tsx scripts/seed.ts",
     "storage:init": "tsx scripts/init-storage.ts",
+    "sim": "tsx scripts/api-sim.ts",
+    "sim:demo": "tsx scripts/api-sim.ts --demo",
+    "sim:drop": "tsx scripts/api-sim.ts --scenario drop",
+    "sim:surge": "tsx scripts/api-sim.ts --scenario surge",
+    "sim:door": "tsx scripts/api-sim.ts --scenario door",
+    "sim:offline": "tsx scripts/api-sim.ts --scenario offline",
+    "video:sample": "bash scripts/make-sample-video.sh",
     "lint": "eslint .",
     "typecheck": "nuxt typecheck"
   },
