@@ -10,6 +10,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', path: '/' },
   { to: '/events', label: 'Inbox Event', path: '/events' },
   { to: '/door', label: 'Door Log', path: '/door' },
+  { to: '/health', label: 'Device Health & Storage', path: '/health' },
 ]
 
 const initials = computed(() => {
@@ -115,6 +116,12 @@ function toggleTheme() {
             <svg v-else-if="item.to === '/events'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
               <path d="M12 9v4M12 17h.01" stroke-linecap="round" />
+            </svg>
+            <svg v-else-if="item.to === '/health'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="7" rx="2" />
+              <rect x="3" y="13" width="18" height="7" rx="2" />
+              <circle cx="7" cy="7.5" r="1" fill="currentColor" />
+              <circle cx="7" cy="16.5" r="1" fill="currentColor" />
             </svg>
             <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
               <rect x="5" y="11" width="14" height="10" rx="2" />
