@@ -69,6 +69,9 @@ blob-report/
 skills-lock.json
 node-red-flow.json
 
+# Design mockup artifacts (Google AI Studio)
+mockup/
+
 # OS and editor files
 .DS_Store
 Thumbs.db
