@@ -69,9 +69,21 @@ interface DeviceHealth {
 
 const { dateLocale, t, tf } = useLocale()
 
+const RECENT_EVENT_TYPES = [
+  'CURRENT_ANOMALY_WARNING',
+  'CURRENT_ANOMALY_CRITICAL',
+  'CURRENT_ANOMALY_ZERO',
+  'DOOR_OPEN',
+  'DOOR_CLOSE',
+] as const
+
 useHead({ title: computed(() => `${t('nav.dashboard')} · ${t('app.name')}`) })
 
 const { data, refresh, pending: dashboardPending, error: dashboardError } = await useFetch<DashboardSnapshot>('/api/v1/dashboard')
+const { data: recentData, refresh: refreshRecent, pending: recentPending } = await useFetch<{ items: DashboardEvent[] }>('/api/v1/events', {
+  query: { type: [...RECENT_EVENT_TYPES] },
+  default: () => ({ items: [] }),
+})
 const { data: healthData, refresh: refreshHealth } = await useFetch<{ devices: DeviceHealth[] }>('/api/v1/devices')
 
 const deviceHealth = computed(() => healthData.value?.devices[0] ?? null)
@@ -96,6 +108,7 @@ function refreshHistoryThrottled() {
 
 const { reading } = useLiveStream(() => {
   void refresh()
+  void refreshRecent()
   void refreshHealth()
   refreshHistoryThrottled()
 })
@@ -146,6 +159,7 @@ function formatBytes(bytes: number | null | undefined) {
 const latest = computed(() => reading.value ?? data.value?.latest_reading ?? null)
 const device = computed(() => data.value?.device ?? null)
 const events = computed(() => data.value?.events ?? [])
+const recentEvents = computed(() => recentData.value?.items.slice(0, 5) ?? [])
 const recordings = computed(() => data.value?.recordings ?? [])
 const latestRecording = computed(() => recordings.value[0] ?? null)
 const activeEventCount = computed(() => events.value.filter(event => event.status === 'open' || event.status === 'acknowledged').length)
@@ -430,15 +444,15 @@ function retry() {
             </div>
 
             <div class="em-scroll-body">
-              <div v-if="dashboardPending && !data" class="space-y-2">
+              <div v-if="recentPending && !recentEvents.length" class="space-y-2">
                 <div v-for="index in 3" :key="index" class="em-skeleton h-11 w-full" />
               </div>
-              <p v-else-if="!events.length" class="em-empty">
+              <p v-else-if="!recentEvents.length" class="em-empty">
                 {{ t('dashboard.noEvents') }}
               </p>
               <div v-else class="em-list">
                 <NuxtLink
-                  v-for="item in events.slice(0, 5)"
+                  v-for="item in recentEvents"
                   :key="item.id"
                   :to="`/events/${item.id}`"
                   class="em-list-row"
