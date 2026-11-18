@@ -1,6 +1,9 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'dashboard' })
-useHead({ title: 'Door Log · Power House Monitoring Systems' })
+
+const { dateLocale, t } = useLocale()
+
+useHead({ title: computed(() => `${t('nav.door')} · ${t('app.name')}`) })
 
 interface DoorItem {
   id: string
@@ -127,16 +130,16 @@ watch([range, items], () => {
   void loadDetails()
 })
 
-const typeLabels: Record<string, string> = {
-  DOOR_OPEN: 'Pintu terbuka',
-  DOOR_CLOSE: 'Pintu tertutup',
-}
+const typeLabels = computed<Record<string, string>>(() => ({
+  DOOR_OPEN: t('event.DOOR_OPEN'),
+  DOOR_CLOSE: t('event.DOOR_CLOSE'),
+}))
 
 function typeBadge(value: string) {
   return value === 'DOOR_CLOSE' ? 'em-badge--neutral' : 'em-badge--warning'
 }
 
-const wibFormat = new Intl.DateTimeFormat('id-ID', {
+const wibFormat = computed(() => new Intl.DateTimeFormat(dateLocale.value, {
   timeZone: 'Asia/Jakarta',
   day: '2-digit',
   month: 'short',
@@ -145,17 +148,17 @@ const wibFormat = new Intl.DateTimeFormat('id-ID', {
   minute: '2-digit',
   second: '2-digit',
   hour12: false,
-})
+}))
 
 function formatWib(value: string) {
-  return `${wibFormat.format(new Date(value)).replace('.', ':')} WIB`
+  return `${wibFormat.value.format(new Date(value)).replace(/\./g, ':')} ${t('common.wib')}`
 }
 
 function formatDuration(ms: number | null) {
   if (ms == null) return '—'
   const total = Math.round(ms / 1000)
-  if (total < 60) return `${total} detik`
-  return `${Math.floor(total / 60)} menit ${total % 60} detik`
+  if (total < 60) return `${total} ${t('common.seconds')}`
+  return `${Math.floor(total / 60)} ${t('common.minutes')} ${total % 60} ${t('common.seconds')}`
 }
 </script>
 
@@ -164,10 +167,10 @@ function formatDuration(ms: number | null) {
     <div class="em-card-head">
       <div>
         <h2 class="em-page-title">
-          Door Log (DOOR-1)
+          {{ t('door.title') }}
         </h2>
         <div class="em-card-sub">
-          Gabungan event DOOR_OPEN dan DOOR_CLOSE diurutkan dari terbaru
+          {{ t('door.subtitle') }}
         </div>
       </div>
       <div class="em-range-pills">
@@ -177,7 +180,7 @@ function formatDuration(ms: number | null) {
           type="button"
           @click="range = 'all'"
         >
-          Semua
+          {{ t('door.filter.all') }}
         </button>
         <button
           class="em-range-pill-btn"
@@ -185,19 +188,19 @@ function formatDuration(ms: number | null) {
           type="button"
           @click="range = '24h'"
         >
-          24 jam terakhir
+          {{ t('door.filter.24h') }}
         </button>
       </div>
     </div>
 
     <div v-if="openError || closeError" class="em-alert em-alert--critical">
-      <span>Gagal memuat door log. {{ openError?.statusMessage ?? closeError?.statusMessage ?? 'Coba muat ulang halaman.' }}</span>
+      <span>{{ t('door.error') }} {{ openError?.statusMessage ?? closeError?.statusMessage ?? t('common.retryPage') }}</span>
     </div>
     <div v-else-if="(openPending && !openData) || (closePending && !closeData)" class="space-y-2">
       <div v-for="index in 4" :key="index" class="em-skeleton h-14 w-full" />
     </div>
     <div v-else-if="!items.length" class="em-empty" style="padding: 36px; text-align: center; font-size: 13px;">
-      Belum ada event pintu.
+      {{ t('door.empty') }}
     </div>
     <div v-else class="em-log-list">
       <NuxtLink
@@ -217,7 +220,7 @@ function formatDuration(ms: number | null) {
             </span>
           </div>
           <div class="em-log-sub">
-            Waktu: {{ formatWib(item.occurred_at) }} · Durasi: {{ formatDuration(item.duration_ms) }}
+            {{ t('door.time') }}: {{ formatWib(item.occurred_at) }} · {{ t('door.duration') }}: {{ formatDuration(item.duration_ms) }}
             <template v-if="details[item.id]?.groupUid">
               · group_uid: {{ details[item.id]?.groupUid }}
             </template>
@@ -228,17 +231,17 @@ function formatDuration(ms: number | null) {
         </div>
 
         <span v-if="details[item.id]?.hasReadyVideo" class="em-badge em-badge--success">
-          Video Siap (10 detik)
+          {{ t('door.videoReady') }}
         </span>
         <span v-else class="em-mono" style="font-size: 11px; color: var(--em-text-muted);">
-          Detail →
+          {{ t('door.detail') }}
         </span>
       </NuxtLink>
     </div>
 
     <div v-if="!openError && !closeError && items.length" class="em-pagination">
       <span class="em-mono" style="font-size: 10px; color: var(--em-text-muted);">
-        {{ openItems.length + closeItems.length }} entri dimuat
+        {{ openItems.length + closeItems.length }} {{ t('door.loadedEntries') }}
       </span>
       <button
         class="em-btn-secondary"
@@ -246,7 +249,7 @@ function formatDuration(ms: number | null) {
         :disabled="allLoaded || loadingMore"
         @click="loadMore"
       >
-        {{ allLoaded ? 'Semua event telah dimuat' : 'Muat lebih banyak' }}
+        {{ allLoaded ? t('door.allLoaded') : t('door.loadMore') }}
       </button>
     </div>
   </section>

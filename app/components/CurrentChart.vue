@@ -15,15 +15,16 @@ const props = defineProps<{
 }>()
 
 const colorMode = useColorMode()
+const { dateLocale, t } = useLocale()
 const isDark = computed(() => colorMode.value === 'dark')
 
-const axisTimeFormat = new Intl.DateTimeFormat('id-ID', {
+const axisTimeFormat = computed(() => new Intl.DateTimeFormat(dateLocale.value, {
   timeZone: 'Asia/Jakarta',
   hour: '2-digit',
   minute: '2-digit',
   second: '2-digit',
   hour12: false,
-})
+}))
 
 function barGradient(top: string, bottom: string) {
   return {
@@ -62,7 +63,7 @@ const option = computed<EChartsOption>(() => {
       axisLabel: {
         color: muted,
         fontSize: 9.5,
-        formatter: (value: string | number) => axisTimeFormat.format(new Date(Number(value))).replace(/\./g, ':'),
+        formatter: (value: string | number) => axisTimeFormat.value.format(new Date(Number(value))).replace(/\./g, ':'),
         hideOverlap: true,
       },
       axisLine: { show: false },
@@ -78,7 +79,7 @@ const option = computed<EChartsOption>(() => {
     },
     series: [
       {
-        name: 'Arus',
+        name: t('chart.current'),
         type: 'bar',
         z: 2,
         data: pairs.map(([timestamp, value]) => {
@@ -115,7 +116,7 @@ const option = computed<EChartsOption>(() => {
         },
       },
       {
-        name: 'Tren',
+        name: t('chart.trend'),
         type: 'line',
         z: 3,
         data: pairs.map(([timestamp, value]) => ({

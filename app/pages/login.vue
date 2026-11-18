@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useLocale()
 const { login } = useAuth()
 const email = ref('')
 const password = ref('')
@@ -15,7 +16,7 @@ async function onSubmit() {
   }
   catch (err) {
     const data = (err as { data?: { error?: { message?: string } } }).data
-    error.value = data?.error?.message ?? 'Login gagal, coba lagi.'
+    error.value = data?.error?.message ?? t('login.error')
   }
   finally {
     loading.value = false
@@ -29,10 +30,10 @@ async function onSubmit() {
       <template #header>
         <div class="space-y-1">
           <h1 class="text-xl font-semibold">
-            Energy Monitoring
+            {{ t('login.title') }}
           </h1>
           <p class="text-sm text-muted">
-            Masuk untuk memantau gardu.
+            {{ t('login.subtitle') }}
           </p>
         </div>
       </template>
@@ -40,7 +41,7 @@ async function onSubmit() {
       <form class="space-y-4" @submit.prevent="onSubmit">
         <UAlert v-if="error" color="error" :title="error" />
 
-        <UFormField label="Email" name="email">
+        <UFormField :label="t('login.email')" name="email">
           <UInput
             v-model="email"
             type="email"
@@ -50,7 +51,7 @@ async function onSubmit() {
           />
         </UFormField>
 
-        <UFormField label="Password" name="password">
+        <UFormField :label="t('login.password')" name="password">
           <UInput
             v-model="password"
             type="password"
@@ -61,7 +62,7 @@ async function onSubmit() {
         </UFormField>
 
         <UButton type="submit" block :loading="loading">
-          Masuk
+          {{ t('login.submit') }}
         </UButton>
       </form>
     </UCard>

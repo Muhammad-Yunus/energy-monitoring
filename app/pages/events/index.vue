@@ -1,6 +1,9 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'dashboard' })
-useHead({ title: 'Inbox Event · Power House Monitoring Systems' })
+
+const { dateLocale, t, tf } = useLocale()
+
+useHead({ title: computed(() => `${t('events.title')} · ${t('app.name')}`) })
 
 interface EventItem {
   id: string
@@ -77,46 +80,41 @@ function openDetail(id: string) {
   return navigateTo(`/events/${id}`)
 }
 
-const statusOptions = [
-  { label: 'Semua status', value: '' },
-  { label: 'Baru (open)', value: 'open' },
-  { label: 'Diterima (acknowledged)', value: 'acknowledged' },
-  { label: 'Selesai (resolved)', value: 'resolved' },
-  { label: 'Positif palsu (false_positive)', value: 'false_positive' },
-]
+const statusLabels = computed<Record<string, string>>(() => ({
+  open: t('status.open'),
+  acknowledged: t('status.acknowledged'),
+  resolved: t('status.resolved'),
+  false_positive: t('status.false_positive'),
+}))
 
-const typeOptions = [
-  { label: 'Semua tipe', value: '' },
-  { label: 'Arus normal', value: 'CURRENT_NORMAL' },
-  { label: 'Anomali ringan', value: 'CURRENT_ANOMALY_WARNING' },
-  { label: 'Anomali kritis', value: 'CURRENT_ANOMALY_CRITICAL' },
-  { label: 'Arus nol', value: 'CURRENT_ANOMALY_ZERO' },
-  { label: 'Pintu terbuka', value: 'DOOR_OPEN' },
-  { label: 'Pintu tertutup', value: 'DOOR_CLOSE' },
-]
+const typeLabels = computed<Record<string, string>>(() => ({
+  CURRENT_NORMAL: t('event.CURRENT_NORMAL'),
+  CURRENT_ANOMALY_WARNING: t('event.CURRENT_ANOMALY_WARNING'),
+  CURRENT_ANOMALY_CRITICAL: t('event.CURRENT_ANOMALY_CRITICAL'),
+  CURRENT_ANOMALY_ZERO: t('event.CURRENT_ANOMALY_ZERO'),
+  DOOR_OPEN: t('event.DOOR_OPEN'),
+  DOOR_CLOSE: t('event.DOOR_CLOSE'),
+}))
 
-const severityOptions = [
-  { label: 'Semua severity', value: '' },
+const statusOptions = computed(() => [
+  { label: t('events.filter.allStatuses'), value: '' },
+  ...Object.entries(statusLabels.value).map(([value, label]) => ({
+    label: tf('events.filter.statusOption', { label, code: value }),
+    value,
+  })),
+])
+
+const typeOptions = computed(() => [
+  { label: t('events.filter.allTypes'), value: '' },
+  ...Object.entries(typeLabels.value).map(([value, label]) => ({ label, value })),
+])
+
+const severityOptions = computed(() => [
+  { label: t('events.filter.allSeverities'), value: '' },
   { label: 'info', value: 'info' },
   { label: 'warning', value: 'warning' },
   { label: 'critical', value: 'critical' },
-]
-
-const typeLabels: Record<string, string> = {
-  CURRENT_NORMAL: 'Arus normal',
-  CURRENT_ANOMALY_WARNING: 'Anomali ringan',
-  CURRENT_ANOMALY_CRITICAL: 'Anomali kritis',
-  CURRENT_ANOMALY_ZERO: 'Arus nol',
-  DOOR_OPEN: 'Pintu terbuka',
-  DOOR_CLOSE: 'Pintu tertutup',
-}
-
-const statusLabels: Record<string, string> = {
-  open: 'Baru',
-  acknowledged: 'Diterima',
-  resolved: 'Selesai',
-  false_positive: 'Positif palsu',
-}
+])
 
 function typeBadge(value: string) {
   if (value === 'DOOR_CLOSE') return 'em-badge--neutral'
@@ -138,7 +136,7 @@ function statusBadge(value: string) {
   return 'em-badge--critical'
 }
 
-const wibFormat = new Intl.DateTimeFormat('id-ID', {
+const wibFormat = computed(() => new Intl.DateTimeFormat(dateLocale.value, {
   timeZone: 'Asia/Jakarta',
   day: '2-digit',
   month: 'short',
@@ -147,18 +145,18 @@ const wibFormat = new Intl.DateTimeFormat('id-ID', {
   minute: '2-digit',
   second: '2-digit',
   hour12: false,
-})
+}))
 
 function formatWib(value: string) {
-  return wibFormat.format(new Date(value)).replace(/\./g, ':')
+  return wibFormat.value.format(new Date(value)).replace(/\./g, ':')
 }
 
 function formatDuration(ms: number | null) {
   if (ms == null) return '—'
   const total = Math.round(ms / 1000)
-  if (total < 60) return `${total} detik`
+  if (total < 60) return `${total} ${t('common.seconds')}`
   const minutes = Math.floor(total / 60)
-  return `${minutes} menit ${total % 60} detik`
+  return `${minutes} ${t('common.minutes')} ${total % 60} ${t('common.seconds')}`
 }
 </script>
 
@@ -167,20 +165,20 @@ function formatDuration(ms: number | null) {
     <div class="em-card-head">
       <div>
         <h2 class="em-page-title">
-          Inbox Event
+          {{ t('events.title') }}
         </h2>
         <div class="em-card-sub">
-          Daftar kejadian arus &amp; pintu gardu · Pagination berbasis cursor
+          {{ t('events.subtitle') }}
         </div>
       </div>
       <button class="em-btn-secondary" type="button" @click="resetFilters">
-        Reset
+        {{ t('events.reset') }}
       </button>
     </div>
 
     <div class="em-filter-bar">
       <div class="em-filter-field">
-        <label for="filter-status">Status</label>
+        <label for="filter-status">{{ t('events.filter.status') }}</label>
         <select id="filter-status" v-model="status" class="em-input-control">
           <option v-for="option in statusOptions" :key="option.value" :value="option.value">
             {{ option.label }}
@@ -188,7 +186,7 @@ function formatDuration(ms: number | null) {
         </select>
       </div>
       <div class="em-filter-field">
-        <label for="filter-type">Tipe</label>
+        <label for="filter-type">{{ t('events.filter.type') }}</label>
         <select id="filter-type" v-model="type" class="em-input-control">
           <option v-for="option in typeOptions" :key="option.value" :value="option.value">
             {{ option.label }}
@@ -196,7 +194,7 @@ function formatDuration(ms: number | null) {
         </select>
       </div>
       <div class="em-filter-field">
-        <label for="filter-severity">Severity</label>
+        <label for="filter-severity">{{ t('events.filter.severity') }}</label>
         <select id="filter-severity" v-model="severity" class="em-input-control">
           <option v-for="option in severityOptions" :key="option.value" :value="option.value">
             {{ option.label }}
@@ -204,37 +202,37 @@ function formatDuration(ms: number | null) {
         </select>
       </div>
       <div class="em-filter-field">
-        <label for="filter-from">Dari (From)</label>
+        <label for="filter-from">{{ t('events.filter.from') }}</label>
         <input id="filter-from" v-model="from" type="datetime-local" class="em-input-control">
       </div>
       <div class="em-filter-field">
-        <label for="filter-to">Sampai (To)</label>
+        <label for="filter-to">{{ t('events.filter.to') }}</label>
         <input id="filter-to" v-model="to" type="datetime-local" class="em-input-control">
       </div>
     </div>
 
     <div v-if="error" class="em-alert em-alert--critical">
-      <span>Gagal memuat event. {{ error.statusMessage ?? 'Coba muat ulang halaman.' }}</span>
+      <span>{{ t('events.error') }} {{ error.statusMessage ?? t('common.retryPage') }}</span>
     </div>
     <div v-else-if="pending && !data" class="space-y-2">
       <div v-for="index in 4" :key="index" class="em-skeleton h-10 w-full" />
     </div>
     <div v-else-if="!visibleItems.length" class="em-empty" style="padding: 44px 16px;">
-      Belum ada event yang cocok
+      {{ t('events.empty') }}
     </div>
     <template v-else>
       <div class="em-table-wrap">
         <table class="em-data-table">
           <thead>
             <tr>
-              <th>Waktu (WIB)</th>
-              <th>Tipe</th>
-              <th>Severity</th>
-              <th>Status</th>
-              <th>Sensor</th>
-              <th>Durasi</th>
-              <th>Catatan</th>
-              <th>Aksi</th>
+              <th>{{ t('events.table.time') }}</th>
+              <th>{{ t('events.table.type') }}</th>
+              <th>{{ t('events.table.severity') }}</th>
+              <th>{{ t('events.table.status') }}</th>
+              <th>{{ t('events.table.sensor') }}</th>
+              <th>{{ t('events.table.duration') }}</th>
+              <th>{{ t('events.table.note') }}</th>
+              <th>{{ t('events.table.action') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -266,7 +264,7 @@ function formatDuration(ms: number | null) {
               </td>
               <td>
                 <button class="em-detail-btn" type="button" @click="openDetail(item.id)">
-                  Detail
+                  {{ t('common.detail') }}
                 </button>
               </td>
             </tr>
@@ -281,7 +279,7 @@ function formatDuration(ms: number | null) {
           :disabled="cursorLoaded || pending"
           @click="loadMore"
         >
-          {{ cursorLoaded ? 'Semua event telah dimuat' : 'Muat lebih banyak' }}
+          {{ cursorLoaded ? t('events.allLoaded') : t('events.loadMore') }}
         </button>
       </div>
     </template>

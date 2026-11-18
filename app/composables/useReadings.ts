@@ -22,6 +22,7 @@ export const READING_RANGE_MS: Record<ReadingRange, number> = {
 }
 
 export function useReadings(range: Ref<ReadingRange>) {
+  const { t } = useLocale()
   const data = ref<ReadingsResponse | null>(null)
   const pending = ref(false)
   const error = ref<string | null>(null)
@@ -51,7 +52,7 @@ export function useReadings(range: Ref<ReadingRange>) {
     }
     catch (cause) {
       if (id === requestId) {
-        error.value = 'Gagal memuat histori arus.'
+        error.value = t('dashboard.historyError')
         console.error('readings: gagal memuat', cause)
       }
     }

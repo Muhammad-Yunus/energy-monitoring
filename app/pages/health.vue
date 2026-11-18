@@ -1,6 +1,9 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'dashboard' })
-useHead({ title: 'Device Health & Storage · Power House Monitoring Systems' })
+
+const { dateLocale, t } = useLocale()
+
+useHead({ title: computed(() => `${t('nav.health')} · ${t('app.name')}`) })
 
 interface DeviceHealth {
   id: string
@@ -52,7 +55,7 @@ useLiveStream(() => {
   void refresh()
 })
 
-const wibFormat = new Intl.DateTimeFormat('id-ID', {
+const wibFormat = computed(() => new Intl.DateTimeFormat(dateLocale.value, {
   timeZone: 'Asia/Jakarta',
   day: '2-digit',
   month: 'short',
@@ -61,10 +64,10 @@ const wibFormat = new Intl.DateTimeFormat('id-ID', {
   minute: '2-digit',
   second: '2-digit',
   hour12: false,
-})
+}))
 
 function formatWib(value: string | null) {
-  return value ? `${wibFormat.format(new Date(value)).replace('.', ':')} WIB` : '—'
+  return value ? `${wibFormat.value.format(new Date(value)).replace(/\./g, ':')} ${t('common.wib')}` : '—'
 }
 
 function formatBytes(value: number | null) {
@@ -78,20 +81,20 @@ function formatUptime(value: number | null) {
   if (value == null) return '—'
   const hours = Math.floor(value / 3600)
   const minutes = Math.floor((value % 3600) / 60)
-  return `${hours} jam ${minutes} menit`
+  return `${hours} ${t('common.hours')} ${minutes} ${t('common.minutes')}`
 }
 
 function formatDoorState(value: DeviceHealth['door_state']) {
-  if (value === 'open') return 'Terbuka'
-  if (value === 'closed') return 'Tertutup'
-  return 'Tidak diketahui'
+  if (value === 'open') return t('common.open')
+  if (value === 'closed') return t('common.closed')
+  return t('common.unknown')
 }
 </script>
 
 <template>
   <div class="space-y-4">
     <div v-if="error" class="em-alert em-alert--critical">
-      <span>Gagal memuat data device. {{ error.statusMessage ?? 'Coba muat ulang halaman.' }}</span>
+      <span>{{ t('health.error') }} {{ error.statusMessage ?? t('common.retryPage') }}</span>
     </div>
 
     <template v-else-if="pending && !data">
@@ -113,7 +116,7 @@ function formatDoorState(value: DeviceHealth['door_state']) {
 
     <div v-else-if="!device" class="em-card">
       <div class="em-empty">
-        Belum ada device terdaftar.
+        {{ t('health.empty') }}
       </div>
     </div>
 
@@ -126,7 +129,7 @@ function formatDoorState(value: DeviceHealth['door_state']) {
               {{ device.serial }}
             </h2>
             <span class="em-badge" :class="device.online ? 'em-badge--success' : 'em-badge--critical'">
-              {{ device.online ? 'Online' : 'Offline' }}
+              {{ device.online ? t('common.online') : t('common.offline') }}
             </span>
           </div>
           <span class="em-card-sub">
@@ -137,7 +140,7 @@ function formatDoorState(value: DeviceHealth['door_state']) {
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 12px;">
           <div>
             <div class="em-card-sub">
-              Firmware
+              {{ t('health.firmware') }}
             </div>
             <div class="em-mono">
               {{ device.firmware }}
@@ -145,7 +148,7 @@ function formatDoorState(value: DeviceHealth['door_state']) {
           </div>
           <div>
             <div class="em-card-sub">
-              Config version
+              {{ t('health.configVersion') }}
             </div>
             <div class="em-mono">
               v{{ device.config_version }}
@@ -153,7 +156,7 @@ function formatDoorState(value: DeviceHealth['door_state']) {
           </div>
           <div>
             <div class="em-card-sub">
-              Door state
+              {{ t('health.doorState') }}
             </div>
             <div>
               {{ formatDoorState(device.door_state) }}
@@ -161,7 +164,7 @@ function formatDoorState(value: DeviceHealth['door_state']) {
           </div>
           <div>
             <div class="em-card-sub">
-              Device ID
+              {{ t('health.deviceId') }}
             </div>
             <div class="em-mono">
               {{ device.id }}
@@ -174,7 +177,7 @@ function formatDoorState(value: DeviceHealth['door_state']) {
         <section class="em-card">
           <div class="em-card-head">
             <h3 class="em-card-title">
-              Health Telemetry
+              {{ t('health.telemetry') }}
             </h3>
             <span class="em-pill-badge">
               received: {{ formatWib(device.health.received_at) }}
@@ -220,7 +223,7 @@ function formatDoorState(value: DeviceHealth['door_state']) {
               <span class="em-badge em-badge--success">{{ value }}</span>
             </div>
             <div v-if="!Object.keys(device.health.sensor_status).length" class="em-empty">
-              Belum ada sensor_status.
+              {{ t('health.noSensorStatus') }}
             </div>
           </div>
         </section>
@@ -228,10 +231,10 @@ function formatDoorState(value: DeviceHealth['door_state']) {
         <section class="em-card">
           <div class="em-card-head">
             <h3 class="em-card-title">
-              Storage &amp; Recordings
+              {{ t('health.storage') }}
             </h3>
             <span class="em-badge" :class="storageBadge">
-              {{ storagePct.toFixed(1) }}% terpakai
+              {{ storagePct.toFixed(1) }}% {{ t('health.used') }}
             </span>
           </div>
 

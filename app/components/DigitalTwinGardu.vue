@@ -26,60 +26,63 @@ const emit = defineEmits<{
   'navigate-door-log': []
 }>()
 
-const recordingLabels: Record<string, string> = {
-  pending: 'Menunggu',
-  uploading: 'Mengunggah',
-  processing: 'Memproses',
-  ready: 'Siap',
-  failed: 'Gagal',
-}
+const { dateLocale, t, tf } = useLocale()
 
-const timeFormat = new Intl.DateTimeFormat('id-ID', {
+const recordingLabels = computed<Record<string, string>>(() => ({
+  pending: t('recording.pending'),
+  uploading: t('recording.uploading'),
+  processing: t('recording.processing'),
+  ready: t('recording.ready'),
+  failed: t('recording.failed'),
+}))
+
+const timeFormat = computed(() => new Intl.DateTimeFormat(dateLocale.value, {
   timeZone: 'Asia/Jakarta',
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
-})
-const timeSecondFormat = new Intl.DateTimeFormat('id-ID', {
+}))
+const timeSecondFormat = computed(() => new Intl.DateTimeFormat(dateLocale.value, {
   timeZone: 'Asia/Jakarta',
   hour: '2-digit',
   minute: '2-digit',
   second: '2-digit',
   hour12: false,
-})
+}))
 
 function formatTime(value: string | null | undefined, seconds = false) {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
-  return (seconds ? timeSecondFormat : timeFormat).format(date).replace(/\./g, ':')
+  return (seconds ? timeSecondFormat.value : timeFormat.value).format(date).replace(/\./g, ':')
 }
 
 function formatDuration(ms: number | null | undefined) {
   if (ms == null) return '—'
   const total = Math.round(ms / 1000)
-  if (total < 60) return `${total} detik`
+  if (total < 60) return `${total} ${t('common.seconds')}`
   const minutes = Math.floor(total / 60)
-  return `${minutes} menit ${total % 60} detik`
+  return `${minutes} ${t('common.minutes')} ${total % 60} ${t('common.seconds')}`
 }
 
 function formatDoorState(state: string | null) {
-  if (state === 'open') return 'Terbuka'
-  if (state === 'closed') return 'Tertutup'
-  return 'Tidak diketahui'
+  if (state === 'open') return t('common.open')
+  if (state === 'closed') return t('common.closed')
+  return t('common.unknown')
 }
 
 const doorOpen = computed(() => props.doorState === 'open')
 const recStatus = computed(() => props.latestRecording?.status ?? 'pending')
-const recLabel = computed(() => recordingLabels[recStatus.value] ?? recStatus.value)
+const recLabel = computed(() => recordingLabels.value[recStatus.value] ?? recStatus.value)
 const critical = computed(() => props.isCriticalCurrent || (props.currentValue ?? 0) < 5)
 const currentText = computed(() => `${(props.currentValue ?? 0).toFixed(1)} A`)
 
 const scanLabel = computed(() => {
-  if (!props.online) return `Offline · ${props.serial}`
-  if (doorOpen.value) return `Pintu Terbuka · ${props.serial}`
-  if (critical.value) return `Anomali Kritis · ${props.serial}`
-  return `Power House Monitoring Systems · ${props.serial}`
+  const params = { serial: props.serial }
+  if (!props.online) return tf('twin.scanOffline', params)
+  if (doorOpen.value) return tf('twin.scanDoorOpen', params)
+  if (critical.value) return tf('twin.scanCritical', params)
+  return tf('twin.scanNormal', params)
 })
 
 const scanTone = computed(() => {
@@ -89,7 +92,7 @@ const scanTone = computed(() => {
 })
 
 const recordingText = computed(() => {
-  if (!props.latestRecording) return 'Belum ada rekaman'
+  if (!props.latestRecording) return t('twin.noRecording')
   return `${recLabel.value} · ${formatDuration(props.latestRecording.duration_ms)}`
 })
 
@@ -117,11 +120,11 @@ const timelineEvents = computed(() => props.events
 
 const timelineLabels = computed(() => {
   const list = timelineEvents.value
-  if (!list.length) return ['—', '—', '—', '—', '—']
+  if (!list.length) return Array.from({ length: 5 }, () => t('common.dash'))
 
   const firstEvent = list[0]
   const lastEvent = list[list.length - 1]
-  if (!firstEvent || !lastEvent) return ['—', '—', '—', '—', '—']
+  if (!firstEvent || !lastEvent) return Array.from({ length: 5 }, () => t('common.dash'))
 
   const first = Date.parse(firstEvent.occurred_at)
   const last = Date.parse(lastEvent.occurred_at)
@@ -156,7 +159,7 @@ const criticalValue = computed(() => {
         <div class="em-popup em-popup--cctv" :class="recordingBorder">
           <div class="em-popup-head">
             <span class="em-popup-dot" :class="recordingDot" />
-            <span>Recording 10s</span>
+            <span>{{ t('twin.recording10s') }}</span>
           </div>
           <div class="em-popup-value">
             {{ recordingText }}
@@ -179,11 +182,11 @@ const criticalValue = computed(() => {
             <span>AmpPhase1 ({{ ampSensorStatus }})</span>
           </div>
           <div class="em-popup-value">
-            {{ currentText }} · {{ critical ? 'Kritis' : 'Normal' }}
+            {{ currentText }} · {{ critical ? t('twin.critical') : t('twin.normal') }}
           </div>
         </div>
 
-        <svg class="em-tower-svg" viewBox="0 0 280 285" fill="none" role="img" aria-label="Visual gardu: kabinet, sensor arus, pintu, dan kamera">
+        <svg class="em-tower-svg" viewBox="0 0 280 285" fill="none" role="img" :aria-label="t('twin.ariaLabel')">
           <defs>
             <linearGradient id="subFront" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stop-color="#f7f9fc" />
@@ -281,7 +284,7 @@ const criticalValue = computed(() => {
 
         <div class="em-bore-card">
           <div class="em-bore-label">
-            Arus (AmpPhase1)
+            {{ t('twin.currentTitle') }}
           </div>
           <div class="em-bore-value">
             {{ currentText }}
@@ -293,10 +296,10 @@ const criticalValue = computed(() => {
     <section class="em-card">
       <div class="em-card-head">
         <h3 class="em-card-title">
-          Door timeline (WIB)
+          {{ t('twin.timelineTitle') }}
         </h3>
         <button class="em-pill-badge" type="button" @click="emit('navigate-door-log')">
-          DOOR-1 · Log Pintu →
+          {{ t('twin.timelineLink') }}
         </button>
       </div>
 
@@ -312,15 +315,14 @@ const criticalValue = computed(() => {
         <div
           v-if="doorEvent"
           class="em-seam-row em-seam-row--door"
-          title="Klik untuk buka detail event DOOR_OPEN"
+          :title="t('twin.openEventTitle')"
           @click="emit('select-event', doorEvent.id)"
         >
           <div class="em-seam-line" />
           <div class="em-seam-pill">
             <span class="em-seam-dot" style="background: var(--em-amber)" />
             <span>
-              Pintu terbuka · {{ formatTime(doorEvent.occurred_at) }}–{{ formatTime(doorEvent.ended_at) }}
-              ({{ formatDuration(doorEvent.duration_ms) }})
+              {{ tf('twin.doorOpenRow', { from: formatTime(doorEvent.occurred_at), to: formatTime(doorEvent.ended_at), duration: formatDuration(doorEvent.duration_ms) }) }}
             </span>
           </div>
         </div>
@@ -328,14 +330,14 @@ const criticalValue = computed(() => {
         <div
           v-if="criticalEvent"
           class="em-seam-row em-seam-row--anomaly"
-          title="Klik untuk buka detail anomali"
+          :title="t('twin.openAnomalyTitle')"
           @click="emit('select-event', criticalEvent.id)"
         >
           <div class="em-seam-line" />
           <div class="em-seam-pill">
             <span class="em-seam-dot" style="background: var(--em-red)" />
             <span>
-              Anomali kritis · {{ formatTime(criticalEvent.occurred_at, true) }} WIB ({{ criticalValue }} A)
+              {{ tf('twin.anomalyRow', { time: formatTime(criticalEvent.occurred_at, true), value: criticalValue }) }}
             </span>
           </div>
         </div>
@@ -345,8 +347,8 @@ const criticalValue = computed(() => {
         <div class="em-ticks-segment">
           <span v-for="index in 12" :key="index" />
         </div>
-        <div class="em-amber-segment" title="DOOR_OPEN → DOOR_CLOSE" />
-        <div class="em-blue-segment" title="Monitoring AmpPhase1" />
+        <div class="em-amber-segment" :title="t('twin.doorCloseSegment')" />
+        <div class="em-blue-segment" :title="t('twin.ampSegment')" />
       </div>
     </section>
   </div>

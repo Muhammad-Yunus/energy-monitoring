@@ -3,18 +3,19 @@ const route = useRoute()
 const colorMode = useColorMode()
 const { user, logout } = useAuth()
 const connected = useState('em-live-connected', () => false)
+const { locale, t, setLocale } = useLocale()
 
-useHead({ title: 'Dashboard · Power House Monitoring Systems' })
+useHead({ title: computed(() => `${t('nav.dashboard')} · ${t('app.name')}`) })
 
-const navItems = [
-  { to: '/', label: 'Dashboard', path: '/' },
-  { to: '/events', label: 'Inbox Event', path: '/events' },
-  { to: '/door', label: 'Door Log', path: '/door' },
-  { to: '/health', label: 'Device Health & Storage', path: '/health' },
-]
+const navItems = computed(() => [
+  { to: '/', label: t('nav.dashboard'), path: '/' },
+  { to: '/events', label: t('nav.inbox'), path: '/events' },
+  { to: '/door', label: t('nav.door'), path: '/door' },
+  { to: '/health', label: t('nav.health'), path: '/health' },
+])
 
 const initials = computed(() => {
-  const name = user.value?.name ?? 'Operator'
+  const name = user.value?.name ?? t('role.operator')
   return name.split(/\s+/).map(part => part[0] ?? '').join('').slice(0, 2).toUpperCase()
 })
 
@@ -46,25 +47,25 @@ function toggleTheme() {
           </svg>
           <div>
             <h1 class="em-brand-title">
-              Power House Monitoring Systems
+              {{ t('app.name') }}
             </h1>
             <p class="em-brand-sub">
-              Real-time power monitoring at the edge
+              {{ t('app.tagline') }}
             </p>
           </div>
         </div>
 
         <div class="em-header-actions">
-          <span class="em-live" title="Status koneksi Server-Sent Events (SSE)">
+          <span class="em-live" :title="t('header.liveTitle')">
             <span class="em-dot" :class="connected ? 'em-dot--online' : 'em-dot--offline'" />
-            {{ connected ? 'Live tersambung' : 'Live terputus — mencoba lagi' }}
+            {{ connected ? t('header.liveConnected') : t('header.liveDisconnected') }}
           </span>
 
           <button
             class="em-icon-btn"
             type="button"
-            title="Refresh data"
-            aria-label="Refresh data"
+            :title="t('header.refresh')"
+            :aria-label="t('header.refresh')"
             @click="refreshNuxtData()"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -74,30 +75,51 @@ function toggleTheme() {
             </svg>
           </button>
 
+          <div class="em-range-pills" role="group" :aria-label="t('lang.label')">
+            <button
+              type="button"
+              class="em-range-pill-btn"
+              :class="{ active: locale === 'id' }"
+              :aria-pressed="locale === 'id'"
+              @click="setLocale('id')"
+            >
+              ID
+            </button>
+            <button
+              type="button"
+              class="em-range-pill-btn"
+              :class="{ active: locale === 'en' }"
+              :aria-pressed="locale === 'en'"
+              @click="setLocale('en')"
+            >
+              EN
+            </button>
+          </div>
+
           <button
             class="em-theme-btn"
             type="button"
-            title="Switch Light / Dark Theme"
+            :title="t('header.theme')"
             @click="toggleTheme"
           >
-            {{ colorMode.value === 'dark' ? 'Light' : 'Dark' }}
+            {{ colorMode.value === 'dark' ? t('theme.light') : t('theme.dark') }}
           </button>
 
           <div class="em-profile">
             <span class="em-avatar">{{ initials }}</span>
             <span class="em-profile-info">
-              <span class="em-profile-role">{{ user?.role ?? 'admin' }}</span>
-              <span class="em-profile-name">{{ user?.name ?? 'Operator' }}</span>
+              <span class="em-profile-role">{{ user?.role === 'admin' ? t('role.admin') : (user?.role ?? t('role.admin')) }}</span>
+              <span class="em-profile-name">{{ user?.name ?? t('role.operator') }}</span>
             </span>
-            <button class="em-logout-mini" type="button" title="Keluar ke halaman login" @click="logout">
-              Keluar
+            <button class="em-logout-mini" type="button" :title="t('header.logout')" @click="logout">
+              {{ t('header.logoutShort') }}
             </button>
           </div>
         </div>
       </header>
 
       <div class="em-body">
-        <nav class="em-sidebar" aria-label="Navigasi utama">
+        <nav class="em-sidebar" :aria-label="t('nav.aria')">
           <NuxtLink
             v-for="item in navItems"
             :key="item.to"
