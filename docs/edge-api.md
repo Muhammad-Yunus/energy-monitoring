@@ -29,6 +29,22 @@ Payload tidak valid menghasilkan `422`:
 }
 ```
 
+## Error dan retry
+
+Semua error memakai bentuk `{ "error": { "code", "message", "details? } }`.
+
+| HTTP | `error.code` | Arti | Aksi edge |
+|---|---|---|---|
+| `200` | — | Sukses | Cek `accepted`/`duplicated` atau `status`. |
+| `401` | `UNAUTHORIZED` | Token tidak valid | Perbaiki token; jangan retry. |
+| `404` | `DEVICE_NOT_FOUND`, `RECORDING_NOT_FOUND` | Resource tidak ada | Jangan retry buta. |
+| `409` | `UPLOAD_NOT_AVAILABLE`, `UPLOAD_ALREADY_COMPLETED`, `UPLOAD_EXPIRED` | Konflik state upload | Cek `GET /api/v1/edge/recordings/:id` dulu. |
+| `422` | `VALIDATION_ERROR` | Payload tidak valid | Perbaiki payload; jangan retry. |
+| `429`, `500`, `502`, `503`, `504` | `STORAGE_ERROR`, `INTERNAL_ERROR`, dst. | Gangguan sementara | Backoff, misalnya 500 ms → 1 s → 2 s + jitter. |
+| `507` | `STORAGE_FULL` | Disk RustFS hampir penuh | Tunda upload sampai retensi berjalan. |
+
+Retry aman karena telemetry dan event idempoten: duplikat dibalas `200` dengan `duplicated > 0`, bukan `409`. Upload yang terputus tidak di-resume; buat sesi baru.
+
 ## POST /api/v1/edge/heartbeat
 
 Memperbarui `last_seen_at`, firmware, dan health device. `firmware` opsional; field lain wajib.
@@ -219,7 +235,7 @@ Request:
   "filename": "clip.mp4",
   "size_bytes": 768000,
   "duration_ms": 10000,
-  "sha256": "64-hex-characters",
+  "sha256": "cbfb0058f2fe9b9304753066c1b9ba2734f64333ae5c2348aecc7f7f580466e0",
   "codec": "h264",
   "started_at": "2026-11-16T10:02:08+07:00",
   "ended_at": "2026-11-16T10:02:18+07:00",
@@ -266,6 +282,7 @@ Jika free disk RustFS di bawah `MIN_FREE_DISK_BYTES` (default 1 GB), sesi baru d
 ```
 
 Edge harus menunda dan mencoba lagi setelah video lama dibersihkan.
+
 - Object key: `recordings/{yyyy}/{mm}/{dd}/{event_uid}/{recording_id}.mp4`.
 - Jika event dengan `event_uid` sama sudah ada, recording langsung ditautkan lewat `event_id`.
 - Recording baru berstatus `pending`; upload part mengikuti endpoint parts pada FR-11.
