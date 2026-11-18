@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'dashboard' })
-useHead({ title: 'Door Log · Gardu Demo' })
+useHead({ title: 'Door Log · Power House Monitoring Systems' })
 
 interface DoorItem {
   id: string

@@ -79,7 +79,7 @@ const scanLabel = computed(() => {
   if (!props.online) return `Offline · ${props.serial}`
   if (doorOpen.value) return `Pintu Terbuka · ${props.serial}`
   if (critical.value) return `Anomali Kritis · ${props.serial}`
-  return `Gardu Demo · ${props.serial}`
+  return `Power House Monitoring Systems · ${props.serial}`
 })
 
 const scanTone = computed(() => {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'dashboard' })
-useHead({ title: 'Device Health & Storage · Gardu Demo' })
+useHead({ title: 'Device Health & Storage · Power House Monitoring Systems' })
 
 interface DeviceHealth {
   id: string

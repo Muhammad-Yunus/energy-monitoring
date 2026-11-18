@@ -57,7 +57,7 @@ interface PatchResponse {
 type WorkflowStatus = 'acknowledged' | 'resolved' | 'false_positive'
 
 definePageMeta({ layout: 'dashboard' })
-useHead({ title: 'Detail Event · Gardu Demo' })
+useHead({ title: 'Detail Event · Power House Monitoring Systems' })
 
 const route = useRoute()
 const detailUrl = computed(() => `/api/v1/events/${encodeURIComponent(String(route.params.id ?? ''))}`)

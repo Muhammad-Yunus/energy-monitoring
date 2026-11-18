@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'dashboard' })
-useHead({ title: 'Inbox Event · Gardu Demo' })
+useHead({ title: 'Inbox Event · Power House Monitoring Systems' })
 
 interface EventItem {
   id: string

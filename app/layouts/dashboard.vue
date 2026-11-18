@@ -4,7 +4,7 @@ const colorMode = useColorMode()
 const { user, logout } = useAuth()
 const connected = useState('em-live-connected', () => false)
 
-useHead({ title: 'Dashboard · Gardu Demo' })
+useHead({ title: 'Dashboard · Power House Monitoring Systems' })
 
 const navItems = [
   { to: '/', label: 'Dashboard', path: '/' },
@@ -46,10 +46,10 @@ function toggleTheme() {
           </svg>
           <div>
             <h1 class="em-brand-title">
-              Gardu Demo
+              Power House Monitoring Systems
             </h1>
             <p class="em-brand-sub">
-              EDGE-001 · Update real-time
+              Real-time power monitoring at the edge
             </p>
           </div>
         </div>
