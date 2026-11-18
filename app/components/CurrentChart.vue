@@ -3,11 +3,12 @@ import type { EChartsOption } from 'echarts'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
 import { use } from 'echarts/core'
+import { LabelLayout } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 import VChart from 'vue-echarts'
 import type { ReadingPoint } from '~/composables/useReadings'
 
-use([CanvasRenderer, BarChart, LineChart, GridComponent, MarkLineComponent, TooltipComponent])
+use([CanvasRenderer, BarChart, LineChart, GridComponent, MarkLineComponent, TooltipComponent, LabelLayout])
 
 const props = defineProps<{
   points: ReadingPoint[]
@@ -56,7 +57,7 @@ const option = computed<EChartsOption>(() => {
       backgroundColor: isDark.value ? '#262b33' : '#ffffff',
       borderColor: isDark.value ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.85)',
       textStyle: { color: isDark.value ? '#f2f4f8' : '#14171c', fontSize: 11 },
-      valueFormatter: value => `${Number(value).toFixed(1)} A`,
+      valueFormatter: value => `${Number(value).toFixed(1)} mA`,
     },
     xAxis: {
       type: 'time',
@@ -111,9 +112,10 @@ const option = computed<EChartsOption>(() => {
           fontSize: 9.5,
           formatter: (params: { value?: unknown }) => {
             const value = Array.isArray(params.value) ? params.value[1] : params.value
-            return `${Number(value ?? 0).toFixed(1)} A`
+            return `${Number(value ?? 0).toFixed(1)} mA`
           },
         },
+        labelLayout: { hideOverlap: true },
       },
       {
         name: t('chart.trend'),

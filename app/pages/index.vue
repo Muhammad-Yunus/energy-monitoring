@@ -307,7 +307,7 @@ function retry() {
           </div>
           <div class="em-kpi-value">
             <span>{{ latest ? latest.value.toFixed(1) : '—' }}</span>
-            <span v-if="latest" class="em-kpi-unit">A</span>
+            <span v-if="latest" class="em-kpi-unit">mA</span>
           </div>
           <div class="em-kpi-sub">
             {{ latest ? formatWib(latest.ts, true) : '—' }}
@@ -412,7 +412,7 @@ function retry() {
           <div v-else class="em-extraction-body">
             <div class="em-avg-stat">
               <div class="em-avg-value">
-                {{ latest ? latest.value.toFixed(1) : '—' }}<span>A</span>
+                {{ latest ? latest.value.toFixed(1) : '—' }}<span>mA</span>
               </div>
               <div class="em-avg-label">
                 {{ tf('dashboard.latest', { sensor: latest?.sensor ?? 'AmpPhase1' }) }}

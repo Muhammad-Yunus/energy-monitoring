@@ -16,7 +16,7 @@ Dokumen ini adalah **sumber kebenaran untuk field dan bentuk data yang tampil di
 |---|---|---|---|
 | `user` | `GET /api/auth/me` | Header, logout | `{ id, email, name, role }`, role demo = `admin` |
 | `device` | `GET /api/v1/dashboard`, `GET /api/v1/devices` | Dashboard, health | serial, firmware, config version, last seen, door state, online |
-| `reading` | `GET /api/v1/dashboard`, `GET /api/v1/readings`, SSE `reading` | Dashboard, detail event | SATU sensor arus saja, satuan **A** |
+| `reading` | `GET /api/v1/dashboard`, `GET /api/v1/readings`, SSE `reading` | Dashboard, detail event | SATU sensor arus saja, satuan **mA** |
 | `event` | `GET /api/v1/events`, `GET /api/v1/events/:id`, SSE | Inbox, detail, door log | 6 tipe, 3 severity, 4 status |
 | `recording` | Dashboard, detail event, SSE `recording.updated` | Dashboard, detail | Video 10 detik, status `ready` saja yang bisa diputar |
 | `health` + `storage` | `GET /api/v1/devices` | Kartu device/storage | Uptime, disk, queue, persentase pakai video |
@@ -286,11 +286,11 @@ Cukup tampilkan indikator "Live tersambung" + dot hijau, dan "Live terputus — 
 ### 4.2 Dashboard
 - Top bar: judul "Dashboard", waktu update terakhir, indikator Live, tombol refresh, nama user + tombol keluar.
 - Baris KPI 4 kartu:
-  1. **Arus saat ini** — angka besar + `A` + nama sensor + timestamp.
+  1. **Arus saat ini** — angka besar + `mA` + nama sensor + timestamp.
   2. **Status device** — dot + `Online`/`Offline` + "terakhir dilihat …".
   3. **Status pintu** — `Terbuka`/`Tertutup`/`Tidak diketahui` + badge.
   4. **Event aktif** — jumlah event `open` + `acknowledged` (nilai turunan, bukan field API).
-- Grafik garis arus (sumbu X waktu, sumbu Y ampere), dengan pemilih rentang `15 menit / 1 jam / 6 jam / 24 jam`.
+- Grafik garis arus (sumbu X waktu, sumbu Y milliampere), dengan pemilih rentang `15 menit / 1 jam / 6 jam / 24 jam`.
 - Panel samping: kartu info device (serial, firmware, config version), kartu storage (progress bar `video_used_pct`, `video_bytes / video_max_bytes`, jumlah recording, free disk), daftar status recording terbaru.
 - Tabel ringkas 5 event terbaru: waktu, tipe badge, severity badge, status badge.
 - Strip door timeline (titik waktu open/close).

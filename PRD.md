@@ -255,7 +255,7 @@ Device offline **bukan** tipe event. Status offline diturunkan dari `devices.las
 Ketentuan:
 
 - Auth: `Authorization: Bearer <device_token>`.
-- Telemetry: maks 1.000 reading per batch; nilai arus dalam ampere (`A`).
+- Telemetry: maks 1.000 reading per batch; nilai arus dalam milliampere (`mA`).
 - Event: maks 100 event per batch; `event_uid` divalidasi `^[A-Za-z0-9_-]{8,64}$`.
 - Video: maks 5 MB per file, durasi maks 30 detik.
 - Part size 5 MiB; klip <1 MB akan menjadi satu part.

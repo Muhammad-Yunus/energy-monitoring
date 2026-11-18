@@ -75,7 +75,7 @@ const doorOpen = computed(() => props.doorState === 'open')
 const recStatus = computed(() => props.latestRecording?.status ?? 'pending')
 const recLabel = computed(() => recordingLabels.value[recStatus.value] ?? recStatus.value)
 const critical = computed(() => props.isCriticalCurrent || (props.currentValue ?? 0) < 5)
-const currentText = computed(() => `${(props.currentValue ?? 0).toFixed(1)} A`)
+const currentText = computed(() => `${(props.currentValue ?? 0).toFixed(1)} mA`)
 
 const scanLabel = computed(() => {
   const params = { serial: props.serial }

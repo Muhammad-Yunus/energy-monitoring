@@ -21,6 +21,8 @@ export const READING_RANGE_MS: Record<ReadingRange, number> = {
   '24h': 24 * 60 * 60 * 1000,
 }
 
+const PLOT_BUCKET_SECONDS = 15 * 60
+
 export function useReadings(range: Ref<ReadingRange>) {
   const { t } = useLocale()
   const data = ref<ReadingsResponse | null>(null)
@@ -42,7 +44,7 @@ export function useReadings(range: Ref<ReadingRange>) {
         query: {
           from: from.toISOString(),
           to: to.toISOString(),
-          bucket: 'auto',
+          bucket: PLOT_BUCKET_SECONDS,
         },
       })
 
