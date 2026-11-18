@@ -4,16 +4,15 @@ Aplikasi monitoring arus dan event untuk satu gardu PLN. Stack mengikuti [PRD.md
 
 ## Status
 
-Scaffold awal:
+Demo single gardu sudah lengkap:
 
-- Nuxt 4 + Vue 3 + TypeScript.
-- Nuxt UI 4 + Tailwind CSS.
-- PostgreSQL 17 + Drizzle ORM.
-- RustFS untuk object storage (S3-compatible).
-- Endpoint `GET /api/health`.
 - Login admin dengan session cookie dan proteksi halaman.
+- Ingest telemetry, event anomali/door, dan heartbeat via API edge dengan bearer token.
+- Dashboard live (SSE), histori arus, inbox event, event detail, dan door log.
+- Upload video multipart presigned ke RustFS, validasi SHA-256/ffprobe, playback, dan thumbnail.
+- Retensi otomatis, disk guard, status device, audit log, dan simulasi API-driven.
 
-Belum termasuk: ingest edge, dashboard, video pipeline, simulator, dan retensi.
+Kontrak edge, idempotensi, status event, dan error/retry ada di [docs/edge-api.md](./docs/edge-api.md).
 
 ## Kebutuhan
 
@@ -57,4 +56,7 @@ pnpm db:migrate
 pnpm db:studio
 pnpm storage:init
 pnpm seed
+pnpm sim
+pnpm sim:demo
+pnpm sim:drop
 ```

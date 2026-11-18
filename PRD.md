@@ -94,7 +94,7 @@ Demo hanya memiliki satu akun admin yang di-seed. Role disimpan di tabel `users`
 - Docker Engine + Compose plugin akan di-install.
 - PostgreSQL dan RustFS berjalan di Docker; Nuxt berjalan native.
 - Edge/simulator dapat menjangkau `http://192.168.1.112:3000` dan `http://192.168.1.112:9000`.
-- Video dari edge berformat MP4 H.264, 10 detik, 720p, tanpa audio, target <1 MB.
+- Video dari edge berformat MP4 H.264, 10 detik, 720p, tanpa audio, target <1 MB. Ini target fixture/simulator; validator server menerima hingga 30 detik dan 5 MB per file.
 - Waktu server dan edge disinkronkan dengan NTP.
 - Browser modern (Chrome/Firefox/Safari terbaru).
 - Demo berjalan di LAN tanpa TLS; tidak diekspos ke internet.
@@ -222,7 +222,7 @@ Device offline **bukan** tipe event. Status offline diturunkan dari `devices.las
 
 - Severity event: `info`, `warning`, `critical`. Severity **diturunkan server dari `type`**, bukan dikirim oleh edge: `CURRENT_NORMAL` → `info`, `CURRENT_ANOMALY_WARNING` → `warning`, `CURRENT_ANOMALY_CRITICAL` dan `CURRENT_ANOMALY_ZERO` → `critical`, `DOOR_OPEN` dan `DOOR_CLOSE` → `warning`.
 - Status event: `open`, `acknowledged`, `resolved`, `false_positive`, dengan `acknowledged_at`, `acknowledged_by`, `resolved_at`, `resolved_by`, dan `note`.
-- Status recording: `pending`, `uploading`, `uploaded`, `processing`, `ready`, `failed`.
+- Status recording: `pending`, `uploading`, `processing`, `ready`, `failed`. Tidak ada status `uploaded`; upload yang gagal bersifat terminal dan edge membuat sesi baru.
 - Status device: `online`, `offline` (diturunkan dari `last_seen_at`, bukan disimpan sebagai event).
 
 ### 10.3 Aturan Korelasi
@@ -280,7 +280,7 @@ Ketentuan:
 | GET | `/api/v1/stream` | SSE live |
 | GET | `/api/health` | Health check DB/RustFS (tanpa auth) |
 
-`PATCH /api/v1/events/:id` menerima `status` (`acknowledged`, `resolved`, `false_positive`) dan `note` opsional. Transisi status divalidasi; `acknowledged_by`/`resolved_by` diisi dari session user.
+`PATCH /api/v1/events/:id` menerima `status` (`acknowledged`, `resolved`, `false_positive`) dan `note` opsional. Transisi yang diizinkan: `open → acknowledged`, lalu `acknowledged → resolved` atau `acknowledged → false_positive`. Resolving langsung dari `open` ditolak `409`; status akhir tidak dapat dibuka kembali. `acknowledged_by`/`resolved_by` diisi dari session user.
 
 Format error konsisten:
 
@@ -306,7 +306,8 @@ Format error konsisten:
 | Dashboard | Arus terakhir, grafik live satu fasa, range histori, status device, door state, anomali aktif, event hari ini, event terbaru, door timeline, video, storage |
 | Events | Inbox dengan filter tipe/severity/status, badge severity/status, pagination |
 | Event detail | Grafik ±10 menit, detail rule, video, door timeline, aksi dan catatan |
-| Settings | Last seen, firmware, config version, threshold, retensi, storage |
+
+Tidak ada halaman Settings. Last seen, firmware, config version, dan storage ditampilkan di dashboard serta endpoint `/api/v1/devices`; threshold dan retensi dikonfigurasi lewat environment, bukan UI.
 
 ### 12.2 Perilaku
 
@@ -336,13 +337,9 @@ Aturan disk guard:
 - Jika total video >1,5 GB, hapus recording tertua.
 - Jika free disk <1 GB, tolak recording baru dengan `507` dan tampilkan warning.
 - Hapus object RustFS lebih dulu, lalu baris database. Jika object gagal dihapus, jangan hapus baris dan catat untuk retry pada siklus retensi berikutnya.
-- Batasi log Docker dan journal systemd agar SD card tidak penuh.
+- Batasi log Docker dan journal systemd agar SD card tidak penuh (langkah manual saat deployment; tidak ada konfigurasi systemd di repo).
 
-Backup:
-
-- `pg_dump` harian dari dalam container `db` (`docker compose exec -T db pg_dump -Fc ...`) ke folder backup.
-- Salin backup ke storage eksternal/network bila tersedia.
-- Uji restore minimal sekali sebelum demo.
+Backup tidak termasuk scope demo: tidak ada script `pg_dump`/`mc mirror` yang dijalankan otomatis. `BACKUP_DIR` dan `BACKUP_KEEP` hanya placeholder environment untuk deployment produksi. Restore dapat diuji manual bila diperlukan.
 
 ---
 
@@ -353,7 +350,7 @@ Backup:
 1. Start PostgreSQL + RustFS, jalankan migrasi dan seed.
 2. Jalankan Nuxt, buka dashboard, login sebagai admin.
 3. Jalankan simulator mode normal; grafik arus bergerak.
-4. Trigger `current-drop`; event critical muncul dan video dapat diputar.
+4. Trigger `pnpm sim:drop`; event critical muncul dan video dapat diputar.
 5. Trigger `door`; event open/close, durasi, dan video muncul.
 6. Acknowledge dan resolve event.
 7. Jalankan `pnpm sim:offline` atau hentikan simulator; device berubah offline setelah 30 detik.
@@ -363,7 +360,7 @@ Backup:
 
 - [ ] Reading muncul ≤2 detik setelah dikirim.
 - [ ] Event muncul via SSE tanpa refresh.
-- [ ] Video 10 detik/720p/<1 MB dapat diputar di browser.
+- [ ] Video 10 detik/720p/<1 MB dari fixture dapat diputar di browser (server memvalidasi codec H.264, durasi ≤30 detik, ukuran ≤5 MB, dan SHA-256).
 - [ ] Event START dan END ter-update tanpa duplikasi.
 - [ ] Retry batch/event/part tidak menggandakan data; duplikat dilaporkan lewat `duplicated`.
 - [ ] Upload dapat di-abort dan status sesi upload terlihat.
@@ -384,6 +381,8 @@ Backup:
 | Duplikasi data setelah retry | 0 |
 | Pemakaian video selama demo | <100 MB |
 | Error ingest | 0 untuk payload valid |
+
+Catatan: metrik di atas adalah target demo yang diukur manual saat smoke test; belum ada benchmark otomatis di repo.
 
 ---
 

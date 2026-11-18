@@ -63,7 +63,7 @@
 
 - **Status:** Accepted
 - **Tanggal:** 16 November 2026
-- **Konteks:** Edge harus mengunggah video tanpa membebani proses Nitro. Klip demo <1 MB dan selalu menjadi satu part.
+- **Konteks:** Edge harus mengunggah video tanpa membebani proses Nitro. Klip demo ditargetkan <1 MB; API menerima hingga 5 MB / 30 detik, sehingga tetap menjadi satu part dengan `part_size` 5 MB.
 - **Keputusan:** API membuat S3 multipart upload, mengembalikan `upload_id` dan `part_size`, lalu edge mengunggah part langsung ke RustFS memakai presigned URL. Demo menyediakan status upload dan abort; resume tidak termasuk scope.
 - **Konsekuensi:**
   - Positif: payload video tidak melewati Node, memory aman, jalur kode sama untuk file lebih besar.
@@ -74,7 +74,7 @@
   - Proxy chunk melalui Nitro: berisiko memory/body limit dan membebani Pi.
   - tus server: menambah komponen dan protokol baru.
   - Upload langsung dengan kredensial S3 di edge: distribusi secret tidak aman.
-  - Resume multipart: menambah state dan pengujian yang tidak dibutuhkan klip <1 MB.
+  - Resume multipart: menambah state dan pengujian yang tidak dibutuhkan klip ≤5 MB.
 
 ---
 
@@ -176,6 +176,7 @@
   - Positif: ukuran ±750 KB per klip, cocok untuk SD card dan upload cepat, kompatibel browser.
   - Negatif: kualitas rendah untuk detail wajah/plat nomor; bukan kualitas investigasi produksi.
   - Netral: parameter dapat dinaikkan saat produksi.
+  - Netral: spesifikasi ini berlaku untuk fixture/simulator. Validator server hanya memeriksa codec H.264, durasi ≤30 detik, ukuran ≤5 MB, dan SHA-256; resolusi, fps, dan profile tidak divalidasi.
 - **Alternatif yang ditolak:**
   - 1080p: lebih besar dan tidak perlu untuk demo.
   - HEVC/H.265: kompatibilitas browser lebih rendah.
@@ -231,10 +232,10 @@
 - **Status:** Accepted
 - **Tanggal:** 16 November 2026
 - **Konteks:** Volume job sangat kecil: thumbnail, verifikasi video, retensi. Single instance.
-- **Keputusan:** Proses finalisasi video secara async dalam proses, dengan status `uploaded`/`processing`, dan scheduled task untuk retry/cleanup. Tidak memakai pg-boss/BullMQ/Redis.
+- **Keputusan:** Proses finalisasi video secara async dalam proses, dengan status `processing`/`ready`/`failed`, dan scheduled task untuk cleanup. Tidak memakai pg-boss/BullMQ/Redis. Upload yang gagal bersifat terminal: edge membuat sesi baru; tidak ada job retry otomatis.
 - **Konsekuensi:**
   - Positif: lebih sedikit service dan dependency.
-  - Negatif: job bisa tertunda jika proses restart; harus idempotent dan dipulihkan lewat status.
+  - Negatif: job bisa tertunda jika proses restart; recording yang tertinggal dibersihkan oleh retensi, bukan dicoba ulang otomatis.
   - Netral: bisa ditingkatkan ke pg-boss saat volume naik.
 - **Alternatif yang ditolak:**
   - pg-boss: andal, tetapi berlebihan untuk demo.
@@ -319,7 +320,7 @@
 - **Status:** Accepted
 - **Tanggal:** 16 November 2026
 - **Konteks:** Dashboard internal, data-dense, butuh tabel, badge, modal, grafik time-series, dan responsif.
-- **Keputusan:** Nuxt UI 4.x (Tailwind CSS 4.x) untuk komponen, ECharts untuk grafik, `@vueuse/nuxt` untuk SSE/utilitas.
+- **Keputusan:** Nuxt UI 4.x (Tailwind CSS 4.x) untuk komponen, ECharts untuk grafik, dan `EventSource` native untuk SSE.
 - **Konsekuensi:**
   - Positif: cepat dibangun, konsisten, tema terang/gelap, komponen siap pakai.
   - Negatif: bundle ECharts cukup besar; gunakan import modular dan `ClientOnly`.
@@ -339,9 +340,9 @@
 - **Konteks:** Edge dapat mengalami clock skew; data bisa terlambat karena offline queue.
 - **Keputusan:**
   - Simpan semua timestamp sebagai `timestamptz` UTC.
-  - Simpan `device_ts` dan `received_at`.
+  - Simpan `ts` dari edge sebagai kolom `ts` pada `readings`; `received_at` disimpan pada `events`. Tidak ada kolom `device_ts` terpisah.
   - Tampilkan waktu di `Asia/Jakarta`.
-  - Gunakan `ts` dari edge untuk data reading, tetapi `received_at` untuk observabilitas.
+  - Gunakan `ts` dari edge untuk data reading; `received_at` pada `events` dipakai untuk observabilitas keterlambatan.
   - Sinkronisasi NTP pada Pi dan edge.
 - **Konsekuensi:**
   - Positif: data terlambat tetap dapat diterima; audit waktu jelas.

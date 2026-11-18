@@ -285,7 +285,7 @@ Edge harus menunda dan mencoba lagi setelah video lama dibersihkan.
 
 - Object key: `recordings/{yyyy}/{mm}/{dd}/{event_uid}/{recording_id}.mp4`.
 - Jika event dengan `event_uid` sama sudah ada, recording langsung ditautkan lewat `event_id`.
-- Recording baru berstatus `pending`; upload part mengikuti endpoint parts pada FR-11.
+- Recording baru berstatus `pending`; upload part memakai `POST /api/v1/edge/recordings/:id/parts`.
 
 ## POST /api/v1/edge/recordings/:id/parts
 

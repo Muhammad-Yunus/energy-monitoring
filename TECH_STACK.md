@@ -40,15 +40,14 @@ Target demo: satu gardu, satu sensor arus satu fasa, satu door contact, satu kam
 | RustFS | 1.0.6 | Docker, S3-compatible |
 | Tailwind CSS | 4.3.5 | Via Nuxt UI |
 | Nuxt UI | 4.12.0 | Komponen dashboard |
-| ECharts | latest stable | Grafik time-series |
-| Zod | latest stable | Validasi API + tipe |
+| ECharts | 6.1.0 | Grafik time-series |
+| Zod | 4.6.7 | Validasi API + tipe |
 | AWS SDK | v3 | S3 client + presigner |
-| VueUse | latest stable | SSE + utilitas |
-| tsx | latest stable | Menjalankan script TS |
-| Vitest | latest stable | Unit/integration test |
-| Playwright | latest stable | E2E opsional |
+| tsx | 4.23.15 | Menjalankan script TS |
 
-**Aturan versioning:** install pnpm lewat `corepack enable`; commit `pnpm-lock.yaml`; pin image Docker dengan tag yang jelas, idealnya digest. Hindari `latest` tanpa pencatatan versi.
+**Aturan versioning:** install pnpm (`pnpm@12.21.0`) lewat `corepack enable`; commit `pnpm-lock.yaml`; pin image Docker dengan tag yang jelas, idealnya digest. Hindari `latest` tanpa pencatatan versi.
+
+**Testing:** belum ada runner test otomatis di repo. Verifikasi memakai `pnpm typecheck`, `pnpm lint`, dan smoke test manual (§15).
 
 ---
 
@@ -103,29 +102,18 @@ IP harus static/DHCP reservation agar presigned URL dan konfigurasi edge stabil.
 energy-monitoring/
 ├─ app/
 │  ├─ app.vue
-│  ├─ layouts/default.vue
+│  ├─ assets/css/main.css
+│  ├─ components/CurrentChart.vue
+│  ├─ composables/{useAuth,useLiveStream,useReadings}.ts
 │  ├─ middleware/auth.global.ts
-│  ├─ pages/
-│  │  ├─ login.vue
-│  │  ├─ index.vue
-│  │  ├─ events/index.vue
-│  │  ├─ events/[id].vue
-│  │  └─ settings.vue
-│  ├─ components/
-│  │  ├─ CurrentChart.vue
-│  │  ├─ CurrentGauge.vue
-│  │  ├─ EventTable.vue
-│  │  ├─ EventStatusBadge.vue
-│  │  ├─ VideoPlayer.vue
-│  │  ├─ DoorTimeline.vue
-│  │  └─ StorageCard.vue
-│  └─ composables/
-│     ├─ useAuth.ts
-│     ├─ useLiveStream.ts
-│     └─ useReadings.ts
+│  └─ pages/
+│     ├─ index.vue
+│     ├─ login.vue
+│     ├─ door.vue
+│     └─ events/{index,[id]}.vue
 ├─ server/
 │  ├─ api/
-│  │  ├─ auth/{login,logout,me}.post/get.ts
+│  │  ├─ auth/{login.post,logout.post,me.get}.ts
 │  │  ├─ health.get.ts
 │  │  └─ v1/
 │  │     ├─ edge/
@@ -135,29 +123,19 @@ energy-monitoring/
 │  │     │  ├─ events.post.ts
 │  │     │  └─ recordings/
 │  │     │     ├─ index.post.ts
-│  │     │     ├─ [id].get.ts
-│  │     │     ├─ [id]/parts.post.ts
-│  │     │     ├─ [id]/complete.post.ts
-│  │     │     └─ [id]/abort.post.ts
+│  │     │     └─ [id]/{index.get,parts.post,complete.post,abort.post}.ts
 │  │     ├─ dashboard.get.ts
 │  │     ├─ readings.get.ts
-│  │     ├─ events/...
-│  │     ├─ recordings/...
 │  │     ├─ devices.get.ts
-│  │     └─ stream.get.ts
-│  ├─ db/
-│  │  ├─ index.ts
-│  │  └─ schema.ts
+│  │     ├─ stream.get.ts
+│  │     ├─ events.get.ts
+│  │     ├─ events/[id].get.ts
+│  │     ├─ events/[id].patch.ts
+│  │     └─ recordings/[id]/{playback.get,thumbnail.get}.ts
+│  ├─ db/{index,schema}.ts
 │  ├─ middleware/device-auth.ts
-│  ├─ plugins/init.ts
-│  ├─ tasks/retention.ts
-│  └─ utils/
-│     ├─ auth.ts
-│     ├─ errors.ts
-│     ├─ bus.ts
-│     ├─ storage.ts
-│     ├─ video.ts
-│     └─ jobs.ts
+│  ├─ plugins/retention.ts
+│  └─ utils/{auth,bus,device-auth,finalize-recording,retention,storage}.ts
 ├─ shared/
 │  └─ schemas/edge.ts
 ├─ drizzle/
@@ -166,15 +144,14 @@ energy-monitoring/
 │  ├─ init-storage.ts
 │  ├─ api-sim.ts
 │  ├─ make-sample-video.sh
-│  └─ backup.sh
-├─ docs/
-│  ├─ edge-api.md
-│  └─ demo.md
+│  └─ fixtures/.gitkeep      # video sample di-generate lokal, gitignored
+├─ docs/edge-api.md
+├─ public/placeholder-thumbnail.svg
 ├─ data/                  # bind mount, gitignored
 │  ├─ postgres/
 │  ├─ rustfs/
 │  └─ rustfs-logs/
-├─ backups/               # gitignored
+├─ backups/               # gitignored, tidak dipakai demo
 ├─ docker-compose.yml
 ├─ drizzle.config.ts
 ├─ nuxt.config.ts
@@ -202,12 +179,11 @@ energy-monitoring/
 | `@nuxt/ui` | Komponen dashboard |
 | `tailwindcss` | Styling |
 | `echarts` + `vue-echarts` | Grafik time-series |
-| `@vueuse/nuxt` | SSE, utilitas |
 | `tsx` | Menjalankan script TypeScript |
 | `dotenv` | Env untuk script |
-| `vitest` | Unit test |
-| `@playwright/test` | E2E opsional |
 | `@nuxt/eslint` | Lint/format |
+
+SSE memakai `EventSource` native di browser; tidak ada dependency VueUse. Belum ada dependency test otomatis (Vitest/Playwright).
 
 Tidak digunakan untuk demo:
 
@@ -574,7 +550,7 @@ Membatalkan multipart upload di S3 dan menandai recording `failed`.
 | GET | `/api/v1/recordings/:id/thumbnail` | 302 presigned GET |
 | GET | `/api/v1/devices` | Health device |
 | GET | `/api/v1/stream` | SSE |
-| GET | `/api/health` | `{ db, minio }` tanpa auth (field `minio` dipertahankan untuk kompatibilitas) |
+| GET | `/api/health` | `{ status, db, minio }` tanpa auth (field `minio` dipertahankan untuk kompatibilitas; pemeriksaannya ke RustFS) |
 
 `PATCH /api/v1/events/:id` menerima:
 
@@ -608,8 +584,8 @@ Kode yang disarankan:
 | 200/201 | Sukses | Lanjut; cek `accepted`/`duplicated` |
 | 401 | Token salah | Perbaiki konfigurasi, jangan retry |
 | 409 | Konflik state (mis. upload sudah selesai) | Cek status, jangan retry buta |
+| 404 | Resource tidak ada | Jangan retry buta |
 | 422 | Validasi gagal | Jangan retry |
-| 429 | Rate limit | Backoff |
 | 500/503 | Server error | Backoff |
 | 507 | Storage penuh | Hentikan video, retry nanti |
 
@@ -679,7 +655,7 @@ Klip <1 MB akan menjadi satu part. Multipart tetap dipakai agar jalur kode sama 
 11. Update recording `ready`, emit SSE.
 12. Hapus temp file.
 
-Jika proses gagal, status `failed` dan error disimpan. Scheduled task dapat mencoba ulang recording `uploaded`/`processing` yang stuck.
+Jika proses gagal, status `failed` dan error dicatat di log server (tidak ada kolom error di database). Tidak ada job retry otomatis; edge membuat sesi baru bila ingin mencoba ulang. Scheduled task hanya melakukan cleanup.
 
 ### 8.4 Object Key
 
@@ -719,13 +695,13 @@ ffmpeg -y -ss 5 -i input.mp4 -frames:v 1 -vf scale=640:-2 -q:v 5 thumb.jpg
 
 ### 8.7 CORS
 
-Bucket CORS minimal:
+Bucket CORS tidak dikonfigurasi otomatis oleh `scripts/init-storage.ts` (hanya `HeadBucket`/`CreateBucket`). Alur demo tidak memerlukannya: presigned PUT berasal dari edge, bukan browser, dan playback memakai redirect server ke signed URL.
+
+Jika konsumsi langsung dari browser diperlukan, tambahkan aturan CORS manual:
 
 - Origin: `http://192.168.1.112:3000`, `http://localhost:3000`
 - Methods: `GET`, `HEAD`
 - Headers: `Range`, `Content-Type`
-
-Presigned PUT dari edge bukan browser, sehingga tidak memerlukan CORS. CORS GET/HEAD berguna untuk playback/canvas.
 
 ---
 
@@ -774,10 +750,9 @@ Presigned PUT dari edge bukan browser, sehingga tidak memerlukan CORS. CORS GET/
   - `event.created`
   - `event.updated`
   - `recording.updated`
-  - `device.updated`
 - Implementasi: in-memory `EventEmitter` di `server/utils/bus.ts`.
-- Heartbeat comment setiap 15 detik.
-- Client memakai `useEventSource` (VueUse) atau native `EventSource`.
+- Heartbeat berupa event SSE `ping` setiap 15 detik.
+- Client memakai `EventSource` native.
 - Reconnect otomatis; fallback polling 5 detik untuk data kritikal.
 - Single instance; multi-instance memerlukan Redis pub/sub.
 
@@ -824,10 +799,7 @@ Tanpa queue eksternal. Gunakan:
 
 ### 11.3 Backup
 
-- `pg_dump -Fc` harian dari container: `docker compose exec -T db pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB" > "$BACKUP_DIR/db-$(date +%F).dump"`.
-- `mc mirror` bucket ke storage eksternal/network.
-- Simpan minimal 7 backup terakhir.
-- Uji restore sebelum demo.
+Backup tidak termasuk scope demo: tidak ada script `pg_dump`/`mc mirror` yang dijalankan otomatis dan tidak ada file `scripts/backup.sh`. `BACKUP_DIR` dan `BACKUP_KEEP` hanya placeholder environment. Restore dapat diuji manual bila diperlukan.
 
 ---
 
@@ -922,16 +894,20 @@ Batasi `NODE_OPTIONS=--max-old-space-size=2048` jika perlu.
 | `S3_SECRET_KEY` | `rustfsadmin` | Ya | Jangan commit |
 | `S3_FORCE_PATH_STYLE` | `true` | Ya | Wajib untuk RustFS |
 | `VIDEO_RETENTION_DAYS` | `7` | Tidak | Default 7 |
-| `VIDEO_MAX_BYTES` | `1610612736` | Tidak | 1,5 GB |
+| `VIDEO_MAX_BYTES` | `1610612736` | Tidak | Cap total video 1,5 GB |
 | `MAX_VIDEO_BYTES` | `5242880` | Tidak | 5 MB/file |
 | `MAX_VIDEO_DURATION_MS` | `30000` | Tidak | 30 detik |
 | `READING_RETENTION_DAYS` | `30` | Tidak | Default 30 |
-| `DEVICE_OFFLINE_SECONDS` | `30` | Tidak | Ambang offline dari `last_seen_at` |
-| `STORAGE_WARN_PCT` | `80` | Tidak | Warning storage |
-| `BACKUP_DIR` | `./backups` | Tidak | Folder backup |
-| `BACKUP_KEEP` | `7` | Tidak | Jumlah backup disimpan |
+| `EVENT_RETENTION_DAYS` | `90` | Tidak | Default 90 |
+| `AUDIT_RETENTION_DAYS` | `90` | Tidak | Default 90 |
+| `UPLOAD_RETENTION_DAYS` | `1` | Tidak | Default 1 hari untuk sesi kedaluwarsa |
+| `MIN_FREE_DISK_BYTES` | `1073741824` | Tidak | Disk guard: 1 GiB |
+| `DEVICE_OFFLINE_SECONDS` | `30` | Tidak | Dipakai `/api/v1/devices`; dashboard memakai 30 detik hardcode |
+| `STORAGE_WARN_PCT` | `80` | Tidak | Placeholder; UI memakai 80 hardcode |
+| `BACKUP_DIR` | `./backups` | Tidak | Placeholder; tidak dipakai demo |
+| `BACKUP_KEEP` | `7` | Tidak | Placeholder; tidak dipakai demo |
 | `API_URL` | `http://127.0.0.1:3000` | Simulator | |
-| `NUXT_PUBLIC_APP_URL` | `http://192.168.1.112:3000` | Ya | Link absolut |
+| `NUXT_PUBLIC_APP_URL` | `http://192.168.1.112:3000` | Tidak | Placeholder link absolut; belum direferensikan kode |
 
 ---
 
@@ -945,6 +921,7 @@ Batasi `NODE_OPTIONS=--max-old-space-size=2048` jika perlu.
     "dev": "nuxt dev",
     "build": "nuxt build",
     "preview": "node .output/server/index.mjs",
+    "postinstall": "nuxt prepare",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
@@ -957,9 +934,6 @@ Batasi `NODE_OPTIONS=--max-old-space-size=2048` jika perlu.
     "sim:door": "tsx scripts/api-sim.ts --scenario door",
     "sim:offline": "tsx scripts/api-sim.ts --scenario offline",
     "video:sample": "bash scripts/make-sample-video.sh",
-    "backup": "bash scripts/backup.sh",
-    "test": "vitest run",
-    "test:e2e": "playwright test",
     "lint": "eslint .",
     "typecheck": "nuxt typecheck"
   }
@@ -1004,6 +978,8 @@ Tidak membuat reading/event/video.
 ---
 
 ## 15. Testing
+
+Belum ada framework test otomatis (Vitest/Playwright) dan script `pnpm test` tidak tersedia. Daftar di bawah adalah skenario yang diverifikasi manual lewat smoke test, dibantu `pnpm typecheck` dan `pnpm lint`.
 
 ### 15.1 Unit
 
@@ -1136,7 +1112,5 @@ Gunakan database test terpisah, misalnya `energy_monitoring_test`, dan reset sch
 - [ ] `pnpm sim:offline`; pastikan device offline dari `last_seen_at`.
 - [ ] Cek playback dari browser lain di LAN.
 - [ ] Uji retensi/disk guard.
-- [ ] Setup `pg_dump` harian dari container + backup RustFS.
-- [ ] `pnpm build`; jalankan systemd.
+- [ ] `pnpm build`; jalankan systemd (unit systemd disiapkan manual saat deployment).
 - [ ] Batasi firewall: 3000/9000/9001 LAN; 5432 lokal.
-- [ ] Dokumentasikan demo di `docs/demo.md`.
