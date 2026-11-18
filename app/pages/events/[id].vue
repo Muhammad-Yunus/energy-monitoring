@@ -56,6 +56,8 @@ interface PatchResponse {
 
 type WorkflowStatus = 'acknowledged' | 'resolved' | 'false_positive'
 
+const CONTEXT_BUCKET_SECONDS = 60
+
 definePageMeta({ layout: 'dashboard' })
 
 const { dateLocale, t, tf } = useLocale()
@@ -81,7 +83,7 @@ async function loadContext() {
       query: {
         from: data.value.context.from,
         to: data.value.context.to,
-        bucket: 'auto',
+        bucket: CONTEXT_BUCKET_SECONDS,
       },
     })
 

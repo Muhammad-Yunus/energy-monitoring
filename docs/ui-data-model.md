@@ -257,7 +257,7 @@ Respons `GET /api/v1/events/:id`.
 }
 ```
 
-Grafik di detail event memakai `GET /api/v1/readings?from=<context.from>&to=<context.to>&bucket=auto`.
+Grafik di detail event memakai `GET /api/v1/readings?from=<context.from>&to=<context.to>&bucket=60` (rata-rata per 1 menit).
 
 ### 3.5 Door log
 
