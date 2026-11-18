@@ -51,10 +51,6 @@ const visibleItems = computed(() => [
   ...extraPages.value.flat(),
 ])
 const cursorLoaded = computed(() => !data.value?.nextCursor)
-const nextCursorPreview = computed(() => {
-  const value = data.value?.nextCursor
-  return value ? `${value.slice(0, 24)}…` : 'null'
-})
 
 watch([status, type, severity, from, to], () => {
   extraPages.value = []
@@ -279,9 +275,6 @@ function formatDuration(ms: number | null) {
       </div>
 
       <div class="em-pagination">
-        <span v-if="data?.nextCursor" class="em-mono">
-          nextCursor: {{ nextCursorPreview }}
-        </span>
         <button
           class="em-btn-secondary"
           type="button"
