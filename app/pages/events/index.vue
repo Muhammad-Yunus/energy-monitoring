@@ -24,8 +24,21 @@ interface EventsResponse {
   nextCursor: string | null
 }
 
+const FILTER_TYPE_CODES = [
+  'CURRENT_NORMAL',
+  'CURRENT_ANOMALY_WARNING',
+  'CURRENT_ANOMALY_CRITICAL',
+  'CURRENT_ANOMALY_ZERO',
+  'DOOR_OPEN',
+  'DOOR_CLOSE',
+] as const
+
+type FilterTypeCode = typeof FILTER_TYPE_CODES[number]
+
+const defaultSelectedTypes: FilterTypeCode[] = FILTER_TYPE_CODES.filter(code => code !== 'CURRENT_NORMAL')
+
 const status = ref('')
-const type = ref('')
+const selectedTypes = ref<FilterTypeCode[]>([...defaultSelectedTypes])
 const severity = ref('')
 const from = ref('')
 const to = ref('')
@@ -41,7 +54,7 @@ function toIso(value: string) {
 const { data, pending, error } = await useFetch<EventsResponse>('/api/v1/events', {
   query: computed(() => ({
     status: status.value || undefined,
-    type: type.value || undefined,
+    type: selectedTypes.value.length ? selectedTypes.value : '',
     severity: severity.value || undefined,
     from: toIso(from.value),
     to: toIso(to.value),
@@ -55,7 +68,7 @@ const visibleItems = computed(() => [
 ])
 const cursorLoaded = computed(() => !data.value?.nextCursor)
 
-watch([status, type, severity, from, to], () => {
+watch([status, selectedTypes, severity, from, to], () => {
   extraPages.value = []
   cursor.value = null
 })
@@ -70,7 +83,7 @@ async function loadMore() {
 
 function resetFilters() {
   status.value = ''
-  type.value = ''
+  selectedTypes.value = [...defaultSelectedTypes]
   severity.value = ''
   from.value = ''
   to.value = ''
@@ -96,17 +109,18 @@ const typeLabels = computed<Record<string, string>>(() => ({
   DOOR_CLOSE: t('event.DOOR_CLOSE'),
 }))
 
+const allTypesSelected = computed(() => selectedTypes.value.length === FILTER_TYPE_CODES.length)
+
+function toggleAllTypes() {
+  selectedTypes.value = allTypesSelected.value ? [] : [...FILTER_TYPE_CODES]
+}
+
 const statusOptions = computed(() => [
   { label: t('events.filter.allStatuses'), value: '' },
   ...Object.entries(statusLabels.value).map(([value, label]) => ({
     label: tf('events.filter.statusOption', { label, code: value }),
     value,
   })),
-])
-
-const typeOptions = computed(() => [
-  { label: t('events.filter.allTypes'), value: '' },
-  ...Object.entries(typeLabels.value).map(([value, label]) => ({ label, value })),
 ])
 
 const severityOptions = computed(() => [
@@ -185,13 +199,22 @@ function formatDuration(ms: number | null) {
           </option>
         </select>
       </div>
-      <div class="em-filter-field">
-        <label for="filter-type">{{ t('events.filter.type') }}</label>
-        <select id="filter-type" v-model="type" class="em-input-control">
-          <option v-for="option in typeOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
+      <div class="em-filter-field em-filter-types">
+        <span class="em-filter-label">{{ t('events.filter.type') }}</span>
+        <div class="em-checkbox-list">
+          <label class="em-checkbox-item em-checkbox-master">
+            <input
+              type="checkbox"
+              :checked="allTypesSelected"
+              @change="toggleAllTypes"
+            >
+            <span>{{ t('events.filter.selectAll') }}</span>
+          </label>
+          <label v-for="code in FILTER_TYPE_CODES" :key="code" class="em-checkbox-item">
+            <input v-model="selectedTypes" type="checkbox" :value="code">
+            <span>{{ typeLabels[code] ?? code }}</span>
+          </label>
+        </div>
       </div>
       <div class="em-filter-field">
         <label for="filter-severity">{{ t('events.filter.severity') }}</label>

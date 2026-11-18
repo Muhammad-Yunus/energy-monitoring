@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lt, or } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, lt, or, sql } from 'drizzle-orm'
 import type { H3Event } from 'h3'
 import { z } from 'zod'
 import { EVENT_TYPES } from '#shared/schemas/edge'
@@ -10,7 +10,7 @@ const PAGE_SIZE = 20
 
 const querySchema = z.object({
   status: z.enum(['open', 'acknowledged', 'resolved', 'false_positive']).optional(),
-  type: z.enum(EVENT_TYPES).optional(),
+  type: z.array(z.enum(EVENT_TYPES)).optional(),
   severity: z.enum(['info', 'warning', 'critical']).optional(),
   from: z.iso.datetime({ offset: true }).optional(),
   to: z.iso.datetime({ offset: true }).optional(),
@@ -51,9 +51,17 @@ export default defineEventHandler(async (event) => {
   }
 
   const rawQuery = getQuery(event)
+  const hasTypeFilter = rawQuery.type !== undefined
+  const rawTypes = hasTypeFilter
+    ? (Array.isArray(rawQuery.type) ? rawQuery.type : [rawQuery.type])
+    : []
+  const typeValues = hasTypeFilter
+    ? rawTypes.filter((value): value is string => typeof value === 'string' && value !== '')
+    : undefined
+
   const parsed = querySchema.safeParse({
     status: typeof rawQuery.status === 'string' && rawQuery.status !== '' ? rawQuery.status : undefined,
-    type: typeof rawQuery.type === 'string' && rawQuery.type !== '' ? rawQuery.type : undefined,
+    type: typeValues,
     severity: typeof rawQuery.severity === 'string' && rawQuery.severity !== '' ? rawQuery.severity : undefined,
     from: typeof rawQuery.from === 'string' && rawQuery.from !== '' ? rawQuery.from : undefined,
     to: typeof rawQuery.to === 'string' && rawQuery.to !== '' ? rawQuery.to : undefined,
@@ -94,7 +102,7 @@ export default defineEventHandler(async (event) => {
   const filters = []
 
   if (status) filters.push(eq(events.status, status))
-  if (type) filters.push(eq(events.type, type))
+  if (hasTypeFilter) filters.push(type?.length ? inArray(events.type, type) : sql`1 = 0`)
   if (severity) filters.push(eq(events.severity, severity))
   if (from) filters.push(gte(events.occurredAt, new Date(from)))
   if (to) filters.push(lt(events.occurredAt, new Date(to)))

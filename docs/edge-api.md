@@ -400,3 +400,7 @@ Aturan:
 ## Retensi
 
 Retensi dijalankan saat server start dan setiap 24 jam: `readings` 30 hari, `events` 90 hari, `audit_logs` 90 hari, video beserta thumbnail 7 hari, sesi upload 24 jam, dan file temp 1 jam. Object RustFS dihapus lebih dulu; jika gagal, baris recording dipertahankan untuk dicoba lagi pada siklus berikutnya. Baris event tidak ikut terhapus saat videonya dihapus.
+
+## Catatan user API: `GET /api/v1/events`
+
+Filter `type` boleh dikirim lebih dari sekali, misalnya `?type=DOOR_OPEN&type=DOOR_CLOSE`. Nilai tunggal seperti `?type=DOOR_OPEN` tetap diterima dan berarti satu tipe. Jika parameter `type` hadir tanpa nilai (`?type=`), hasilnya sengaja kosong; ini dipakai UI saat semua checkbox tipe dinonaktifkan. Jika parameter `type` tidak dikirim sama sekali, filter tipe tidak diterapkan.
