@@ -1,11 +1,8 @@
-import { statfs } from 'node:fs/promises'
-import { resolve } from 'node:path'
 import { desc, sql } from 'drizzle-orm'
 import { db } from '../../db'
 import { devices, recordings } from '../../db/schema'
 import { getSessionUser } from '../../utils/auth'
-
-const RUSTFS_DATA_DIR = resolve(process.cwd(), 'data/rustfs')
+import { getRustFsDiskSpace, videoMaxBytes } from '../../utils/storage'
 
 function numberFrom(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
@@ -26,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
   const now = new Date()
   const offlineSeconds = Number(process.env.DEVICE_OFFLINE_SECONDS ?? 30)
-  const maxVideoBytes = Number(process.env.VIDEO_MAX_BYTES ?? 1_610_612_736)
+  const maxVideoBytes = videoMaxBytes()
 
   const [device] = await db
     .select()
@@ -48,17 +45,7 @@ export default defineEventHandler(async (event) => {
     })
     .from(recordings)
 
-  let diskFreeBytes: number | null = null
-  let diskTotalBytes: number | null = null
-
-  try {
-    const stats = await statfs(RUSTFS_DATA_DIR)
-    diskFreeBytes = Number(stats.bavail) * Number(stats.bsize)
-    diskTotalBytes = Number(stats.blocks) * Number(stats.bsize)
-  }
-  catch {
-    // Storage lokal tidak tersedia; UI menampilkan tanda “—”.
-  }
+  const { freeBytes: diskFreeBytes, totalBytes: diskTotalBytes } = await getRustFsDiskSpace()
 
   const videoBytes = Number(usage?.videoBytes ?? 0)
   const health = device.health

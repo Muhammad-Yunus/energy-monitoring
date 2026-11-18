@@ -5,7 +5,8 @@ import { DEFAULT_EDGE_CONFIG, recordingSessionSchema } from '#shared/schemas/edg
 import { db } from '../../../../db'
 import { cameras, events, recordings, recordingUploads } from '../../../../db/schema'
 import { emitRecordingStatus } from '../../../../utils/bus'
-import { s3Bucket, s3Internal } from '../../../../utils/storage'
+import { enforceVideoCap } from '../../../../utils/retention'
+import { getRustFsDiskSpace, minFreeDiskBytes, s3Bucket, s3Internal } from '../../../../utils/storage'
 import type { AuthDevice } from '../../../../utils/device-auth'
 
 const UPLOAD_TTL_MS = 24 * 60 * 60 * 1000
@@ -99,6 +100,25 @@ export default defineEventHandler(async (event) => {
     .from(events)
     .where(and(eq(events.deviceId, device.id), eq(events.eventUid, input.event_uid)))
     .limit(1)
+
+  const { freeBytes } = await getRustFsDiskSpace()
+
+  if (freeBytes !== null && freeBytes < minFreeDiskBytes()) {
+    setResponseStatus(event, 507)
+    return {
+      error: {
+        code: 'STORAGE_FULL',
+        message: 'Penyimpanan video hampir penuh; sesi baru ditolak',
+      },
+    }
+  }
+
+  try {
+    await enforceVideoCap()
+  }
+  catch (error) {
+    console.error('recordings: gagal menegakkan batas video', error instanceof Error ? error.message : error)
+  }
 
   const recordingId = randomUUID()
   const startedAt = new Date(input.started_at)

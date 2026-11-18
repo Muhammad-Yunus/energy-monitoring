@@ -251,7 +251,21 @@ Aturan:
 - `trigger_offset_ms` tidak boleh melebihi `duration_ms`.
 - `ended_at` harus setelah `started_at`.
 - Part size 5 MiB; `total_parts = ceil(size_bytes / part_size)`.
+- Jika total video melebihi `VIDEO_MAX_BYTES` (default 1,5 GB), recording tertua dihapus sebelum sesi baru dibuat.
 - Sesi upload berlaku 24 jam; upload yang terputus diulang dengan sesi baru.
+
+Jika free disk RustFS di bawah `MIN_FREE_DISK_BYTES` (default 1 GB), sesi baru ditolak dengan `507`:
+
+```json
+{
+  "error": {
+    "code": "STORAGE_FULL",
+    "message": "Penyimpanan video hampir penuh; sesi baru ditolak"
+  }
+}
+```
+
+Edge harus menunda dan mencoba lagi setelah video lama dibersihkan.
 - Object key: `recordings/{yyyy}/{mm}/{dd}/{event_uid}/{recording_id}.mp4`.
 - Jika event dengan `event_uid` sama sudah ada, recording langsung ditautkan lewat `event_id`.
 - Recording baru berstatus `pending`; upload part mengikuti endpoint parts pada FR-11.
@@ -365,3 +379,7 @@ Aturan:
   - `ffprobe` untuk memastikan codec `h264` dan durasi sesuai `duration_ms` (toleransi 1,5 detik).
   - Buat thumbnail JPEG 640 px di `thumbnails/{yyyy}/{mm}/{dd}/{recording_id}.jpg`.
 - Jika semua valid, recording menjadi `ready` dan `thumbnail_key` terisi. Jika gagal, recording menjadi `failed`.
+
+## Retensi
+
+Retensi dijalankan saat server start dan setiap 24 jam: `readings` 30 hari, `events` 90 hari, `audit_logs` 90 hari, video beserta thumbnail 7 hari, sesi upload 24 jam, dan file temp 1 jam. Object RustFS dihapus lebih dulu; jika gagal, baris recording dipertahankan untuk dicoba lagi pada siklus berikutnya. Baris event tidak ikut terhapus saat videonya dihapus.
