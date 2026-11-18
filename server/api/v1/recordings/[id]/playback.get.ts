@@ -2,7 +2,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { eq } from 'drizzle-orm'
 import { db } from '../../../../db'
-import { recordings } from '../../../../db/schema'
+import { auditLogs, recordings } from '../../../../db/schema'
 import { getSessionUser } from '../../../../utils/auth'
 import { s3Bucket, s3Public } from '../../../../utils/storage'
 
@@ -37,6 +37,7 @@ export default defineEventHandler(async (event) => {
   const [row] = await db
     .select({
       objectKey: recordings.objectKey,
+      eventUid: recordings.eventUid,
       status: recordings.status,
     })
     .from(recordings)
@@ -62,6 +63,15 @@ export default defineEventHandler(async (event) => {
       },
     }
   }
+
+  await db.insert(auditLogs).values({
+    userId: user.id,
+    action: 'recording.playback',
+    entityType: 'recording',
+    entityId: id,
+    meta: { event_uid: row.eventUid },
+    ip: getRequestIP(event, { xForwardedFor: true }) ?? null,
+  })
 
   const url = await getSignedUrl(
     s3Public,
