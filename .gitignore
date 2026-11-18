@@ -66,6 +66,8 @@ blob-report/
 .agents/
 .claude/
 .grok/
+skills-lock.json
+node-red-flow.json
 
 # OS and editor files
 .DS_Store
