@@ -34,22 +34,33 @@ interface DoorInfo {
 const range = ref<'all' | '24h'>('all')
 const cutoff = Date.now() - 24 * 60 * 60 * 1000
 
+const openCursor = ref<string | null>(null)
+const closeCursor = ref<string | null>(null)
+const openExtraPages = ref<DoorItem[][]>([])
+const closeExtraPages = ref<DoorItem[][]>([])
+
 const { data: openData, pending: openPending, error: openError, refresh: refreshOpen } = await useFetch<EventsResponse>('/api/v1/events', {
   key: 'door-open',
-  query: { type: 'DOOR_OPEN' },
+  query: computed(() => ({ type: 'DOOR_OPEN', cursor: openCursor.value || undefined })),
 })
 const { data: closeData, pending: closePending, error: closeError, refresh: refreshClose } = await useFetch<EventsResponse>('/api/v1/events', {
   key: 'door-close',
-  query: { type: 'DOOR_CLOSE' },
+  query: computed(() => ({ type: 'DOOR_CLOSE', cursor: closeCursor.value || undefined })),
 })
 
 const details = ref<Record<string, DoorInfo>>({})
 const detailsLoading = ref(false)
 let detailsRequest = 0
 
-const items = computed(() => [...(openData.value?.items ?? []), ...(closeData.value?.items ?? [])]
+const openItems = computed(() => [...(openData.value?.items ?? []), ...openExtraPages.value.flat()])
+const closeItems = computed(() => [...(closeData.value?.items ?? []), ...closeExtraPages.value.flat()])
+
+const items = computed(() => [...openItems.value, ...closeItems.value]
   .filter(item => range.value === 'all' || Date.parse(item.occurred_at) >= cutoff)
   .sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at)))
+
+const allLoaded = computed(() => !openData.value?.nextCursor && !closeData.value?.nextCursor)
+const loadingMore = computed(() => openPending.value || closePending.value)
 
 async function loadDetails() {
   if (!import.meta.client || !items.value.length) return
@@ -76,6 +87,32 @@ async function loadDetails() {
   detailsLoading.value = false
 }
 
+function loadMore() {
+  if (allLoaded.value || loadingMore.value) return
+
+  const openNext = openData.value?.nextCursor
+  const closeNext = closeData.value?.nextCursor
+  let target: 'open' | 'close'
+
+  if (openNext && closeNext) {
+    const openLast = Date.parse(openData.value?.items.at(-1)?.occurred_at ?? '')
+    const closeLast = Date.parse(closeData.value?.items.at(-1)?.occurred_at ?? '')
+    target = openLast >= closeLast ? 'open' : 'close'
+  }
+  else {
+    target = openNext ? 'open' : 'close'
+  }
+
+  if (target === 'open') {
+    openExtraPages.value = [...openExtraPages.value, openData.value?.items ?? []]
+    openCursor.value = openNext ?? null
+  }
+  else {
+    closeExtraPages.value = [...closeExtraPages.value, closeData.value?.items ?? []]
+    closeCursor.value = closeNext ?? null
+  }
+}
+
 onMounted(() => {
   void loadDetails()
 })
@@ -86,7 +123,7 @@ useLiveStream(() => {
   void loadDetails()
 })
 
-watch(range, () => {
+watch([range, items], () => {
   void loadDetails()
 })
 
@@ -197,6 +234,20 @@ function formatDuration(ms: number | null) {
           Detail →
         </span>
       </NuxtLink>
+    </div>
+
+    <div v-if="!openError && !closeError && items.length" class="em-pagination">
+      <span class="em-mono" style="font-size: 10px; color: var(--em-text-muted);">
+        {{ openItems.length + closeItems.length }} entri dimuat
+      </span>
+      <button
+        class="em-btn-secondary"
+        type="button"
+        :disabled="allLoaded || loadingMore"
+        @click="loadMore"
+      >
+        {{ allLoaded ? 'Semua event telah dimuat' : 'Muat lebih banyak' }}
+      </button>
     </div>
   </section>
 </template>
