@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts'
 import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
+import { GridComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import VChart from 'vue-echarts'
 import type { ReadingPoint } from '~/composables/useReadings'
 
-use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
+use([CanvasRenderer, BarChart, LineChart, GridComponent, MarkLineComponent, TooltipComponent])
 
 const props = defineProps<{
   points: ReadingPoint[]
+  markerTs?: number | null
 }>()
 
 const colorMode = useColorMode()
@@ -97,6 +98,15 @@ const option = computed<EChartsOption>(() => {
         lineStyle: { width: 2, color: isDark.value ? 'rgba(110,122,247,0.72)' : 'rgba(101,114,244,0.65)' },
         itemStyle: { color: accent, borderColor: '#ffffff', borderWidth: 1.4 },
         areaStyle: { opacity: 0 },
+        markLine: props.markerTs == null
+          ? undefined
+          : {
+              silent: true,
+              symbol: 'none',
+              lineStyle: { color: red, width: 1.5, type: 'dashed' },
+              label: { show: false },
+              data: [{ xAxis: props.markerTs }],
+            },
       },
     ],
   }
