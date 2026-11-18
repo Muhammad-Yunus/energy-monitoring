@@ -5,7 +5,8 @@ export interface LiveReading {
 }
 
 export function useLiveStream(onSignal: () => unknown) {
-  const connected = ref(false)
+  // Status koneksi dibagikan ke layout agar indikator live memakai sumber yang sama.
+  const connected = useState('em-live-connected', () => false)
   const reading = ref<LiveReading | null>(null)
 
   let source: EventSource | null = null
