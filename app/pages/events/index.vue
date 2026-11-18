@@ -110,6 +110,16 @@ const typeLabels = computed<Record<string, string>>(() => ({
 }))
 
 const allTypesSelected = computed(() => selectedTypes.value.length === FILTER_TYPE_CODES.length)
+const typeDropdown = ref<HTMLDetailsElement | null>(null)
+
+function closeTypeDropdownOnOutsideClick(event: MouseEvent) {
+  if (typeDropdown.value && !typeDropdown.value.contains(event.target as Node)) {
+    typeDropdown.value.open = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', closeTypeDropdownOnOutsideClick))
+onUnmounted(() => document.removeEventListener('click', closeTypeDropdownOnOutsideClick))
 
 function toggleAllTypes() {
   selectedTypes.value = allTypesSelected.value ? [] : [...FILTER_TYPE_CODES]
@@ -201,20 +211,28 @@ function formatDuration(ms: number | null) {
       </div>
       <div class="em-filter-field em-filter-types">
         <span class="em-filter-label">{{ t('events.filter.type') }}</span>
-        <div class="em-checkbox-list">
-          <label class="em-checkbox-item em-checkbox-master">
-            <input
-              type="checkbox"
-              :checked="allTypesSelected"
-              @change="toggleAllTypes"
-            >
-            <span>{{ t('events.filter.selectAll') }}</span>
-          </label>
-          <label v-for="code in FILTER_TYPE_CODES" :key="code" class="em-checkbox-item">
-            <input v-model="selectedTypes" type="checkbox" :value="code">
-            <span>{{ typeLabels[code] ?? code }}</span>
-          </label>
-        </div>
+        <details ref="typeDropdown" class="em-multiselect">
+          <summary class="em-multiselect-trigger">
+            <span>{{ tf('events.filter.selected', { count: selectedTypes.length }) }}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </summary>
+          <div class="em-multiselect-panel">
+            <label class="em-checkbox-item em-checkbox-master">
+              <input
+                type="checkbox"
+                :checked="allTypesSelected"
+                @change="toggleAllTypes"
+              >
+              <span>{{ t('events.filter.selectAll') }}</span>
+            </label>
+            <label v-for="code in FILTER_TYPE_CODES" :key="code" class="em-checkbox-item">
+              <input v-model="selectedTypes" type="checkbox" :value="code">
+              <span>{{ typeLabels[code] ?? code }}</span>
+            </label>
+          </div>
+        </details>
       </div>
       <div class="em-filter-field">
         <label for="filter-severity">{{ t('events.filter.severity') }}</label>

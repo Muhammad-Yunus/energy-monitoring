@@ -1129,20 +1129,56 @@ body {
 }
 
 .em-filter-types {
-  flex: 1 1 320px;
-  min-width: 280px;
+  flex: 0 1 220px;
+  min-width: 180px;
 }
 
-.em-checkbox-list {
+.em-multiselect {
+  position: relative;
+}
+
+.em-multiselect-trigger {
+  height: 34px;
+  padding: 0 10px;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 6px 14px;
-  min-height: 34px;
-  padding: 6px 10px;
+  justify-content: space-between;
+  gap: 8px;
   border: 1px solid var(--em-border);
   border-radius: 9px;
   background: var(--em-inner);
+  color: var(--em-text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  list-style: none;
+  cursor: pointer;
+}
+
+.em-multiselect-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.em-multiselect[open] .em-multiselect-trigger svg {
+  transform: rotate(180deg);
+}
+
+.em-multiselect-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 300px;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--em-border);
+  border-radius: 9px;
+  background: var(--em-surface);
+  box-shadow: var(--em-shadow);
 }
 
 .em-filter-types .em-checkbox-item {
@@ -1165,8 +1201,9 @@ body {
 }
 
 .em-checkbox-master {
-  padding-right: 12px;
-  border-right: 1px solid var(--em-border);
+  width: 100%;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--em-border);
 }
 
 .em-input-control {
