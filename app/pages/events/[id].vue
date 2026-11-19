@@ -273,6 +273,14 @@ async function applyAction(status: WorkflowStatus) {
             </h2>
             <template v-if="data">
               <span class="em-badge" :class="typeBadge(data.event.type)">
+                <svg v-if="data.event.type.startsWith('DOOR_')" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M2 21h20" stroke-linecap="round" />
+                  <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" stroke-linecap="round" stroke-linejoin="round" />
+                  <circle cx="15" cy="12" r="1" />
+                </svg>
+                <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
                 {{ typeLabels[data.event.type] ?? data.event.type }}
               </span>
               <span class="em-badge" :class="severityBadge(data.event.severity)">
