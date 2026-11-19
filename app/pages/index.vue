@@ -569,6 +569,10 @@ function retry() {
                     class="em-list-row"
                     style="padding: 6px 9px;"
                   >
+                    <svg class="em-rec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="m22 8-6 4 6 4V8Z" stroke-linecap="round" stroke-linejoin="round" />
+                      <rect x="2" y="6" width="14" height="12" rx="2" />
+                    </svg>
                     <div class="em-row-main">
                       <div class="em-row-title em-mono">
                         {{ item.event_uid }}

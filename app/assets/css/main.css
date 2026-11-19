@@ -725,6 +725,13 @@ body {
   color: var(--em-text-muted);
 }
 
+.em-rec-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--em-blue);
+}
+
 .em-metric-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
