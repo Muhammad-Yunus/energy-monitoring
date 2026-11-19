@@ -1418,9 +1418,15 @@ body {
   color: var(--em-text-muted);
 }
 
+.em-chart-card {
+  display: flex;
+  flex-direction: column;
+}
+
 .em-chart-box {
   position: relative;
-  height: 175px;
+  flex: 1;
+  min-height: 175px;
   background: var(--em-inner);
   border: 1px solid var(--em-border);
   border-radius: 12px;
@@ -1429,6 +1435,11 @@ body {
 
 .em-video-card {
   background: var(--em-inner);
+}
+
+.em-video-card video {
+  max-height: 350px;
+  object-fit: contain;
 }
 
 .em-video-title {

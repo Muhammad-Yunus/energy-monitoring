@@ -334,7 +334,7 @@ async function applyAction(status: WorkflowStatus) {
 
     <template v-else-if="data">
       <div class="em-content-grid">
-        <section class="em-card">
+        <section class="em-card em-chart-card">
           <div class="em-card-head">
             <div>
               <h3 class="em-card-title">
