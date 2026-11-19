@@ -309,6 +309,7 @@ body {
 }
 
 .em-kpi {
+  position: relative;
   min-width: 0;
   padding: 12px 15px;
   border: 1px solid var(--em-border);
@@ -316,10 +317,27 @@ body {
   background: var(--em-surface);
   box-shadow: var(--em-shadow);
   backdrop-filter: blur(12px);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 4px;
+}
+
+.em-kpi-icon {
+  position: absolute;
+  right: -18px;
+  bottom: -22px;
+  width: 90px;
+  height: 90px;
+  color: var(--em-bg);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.em-kpi > :not(.em-kpi-icon) {
+  position: relative;
+  z-index: 1;
 }
 
 .em-kpi-label {

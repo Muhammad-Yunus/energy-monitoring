@@ -301,6 +301,9 @@ function retry() {
       </template>
       <template v-else>
         <div class="em-kpi">
+          <svg class="em-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
           <div class="em-kpi-label">
             <span>{{ t('dashboard.current') }}</span>
             <span class="em-pill-badge">{{ latest?.sensor ?? 'AmpPhase1' }}</span>
@@ -315,6 +318,11 @@ function retry() {
         </div>
 
         <div class="em-kpi">
+          <svg class="em-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="7" rx="2" />
+            <rect x="3" y="13" width="18" height="7" rx="2" />
+            <path d="M7 7.5h.01M7 16.5h.01" stroke-linecap="round" />
+          </svg>
           <div class="em-kpi-label">
             <span>{{ t('dashboard.deviceStatus') }}</span>
             <span class="em-mono">{{ device?.serial ?? '—' }}</span>
@@ -329,6 +337,11 @@ function retry() {
         </div>
 
         <div class="em-kpi">
+          <svg class="em-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M2 21h20" stroke-linecap="round" />
+            <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="15" cy="12" r="1" />
+          </svg>
           <div class="em-kpi-label">
             <span>{{ t('dashboard.doorStatus') }}</span>
             <span
@@ -347,6 +360,10 @@ function retry() {
         </div>
 
         <div class="em-kpi">
+          <svg class="em-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M12 9v4M12 17h.01" stroke-linecap="round" />
+          </svg>
           <div class="em-kpi-label">
             <span>{{ t('dashboard.activeEvent') }}</span>
             <span class="em-pill-badge">{{ t('dashboard.openAck') }}</span>
