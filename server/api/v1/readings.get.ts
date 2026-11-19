@@ -1,8 +1,8 @@
-import { and, eq, gte, lt, sql } from 'drizzle-orm'
+import { and, eq, gte, inArray, lt, sql } from 'drizzle-orm'
 import type { H3Event } from 'h3'
 import { z } from 'zod'
 import { db } from '../../db'
-import { readings, sensors } from '../../db/schema'
+import { events, readings, sensors } from '../../db/schema'
 import { getSessionUser } from '../../utils/auth'
 
 const MAX_POINTS = 2000
@@ -10,6 +10,8 @@ const MAX_RANGE_MS = 30 * 24 * 60 * 60 * 1000
 const RANGE_GRACE_MS = 60 * 1000
 const DEFAULT_RANGE_MS = 60 * 60 * 1000
 const BUCKET_CANDIDATES_SECONDS = [5, 30, 60, 600, 1800]
+const CURRENT_ANOMALY_TYPES = ['CURRENT_ANOMALY_ZERO', 'CURRENT_ANOMALY_WARNING', 'CURRENT_ANOMALY_CRITICAL']
+const ACTIVE_EVENT_STATUSES = ['open', 'acknowledged']
 
 const querySchema = z.object({
   from: z.iso.datetime({ offset: true }).optional(),
@@ -111,6 +113,7 @@ export default defineEventHandler(async (event) => {
       from: from.toISOString(),
       to: to.toISOString(),
       bucket_seconds: bucketSeconds,
+      anomaly_buckets: [],
       points: [],
     }
   }
@@ -131,11 +134,28 @@ export default defineEventHandler(async (event) => {
     .groupBy(sql`1`)
     .orderBy(sql`1`)
 
+  const eventBucket = sql`date_bin(make_interval(secs => ${sql.raw(String(bucketSeconds))}), ${events.occurredAt}, timestamptz '2000-01-01')`
+  const anomalyRows = await db
+    .select({ bucket: sql<Date>`${eventBucket}`.as('bucket') })
+    .from(events)
+    .where(and(
+      inArray(events.type, CURRENT_ANOMALY_TYPES),
+      inArray(events.status, ACTIVE_EVENT_STATUSES),
+      gte(events.occurredAt, from),
+      lt(events.occurredAt, to),
+    ))
+    .groupBy(sql`1`)
+    .orderBy(sql`1`)
+
+  const anomalyBuckets = anomalyRows.map(row =>
+    row.bucket instanceof Date ? row.bucket.toISOString() : new Date(row.bucket).toISOString())
+
   return {
     sensor: sensor.key,
     from: from.toISOString(),
     to: to.toISOString(),
     bucket_seconds: bucketSeconds,
+    anomaly_buckets: anomalyBuckets,
     points: rows.map(row => ({
       ts: row.bucket instanceof Date ? row.bucket.toISOString() : new Date(row.bucket).toISOString(),
       value: Number(row.value),

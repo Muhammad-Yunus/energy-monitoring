@@ -106,6 +106,7 @@ Gabungan dari `GET /api/v1/dashboard`, `GET /api/v1/readings`, dan `GET /api/v1/
     "from": "2026-11-17T23:23:45.000Z",
     "to": "2026-11-18T01:23:45.000Z",
     "bucket_seconds": 5,
+    "anomaly_buckets": ["2026-11-17T23:25:00.000Z"],
     "points": [
       { "ts": "2026-11-17T23:23:45.000Z", "value": 23.1 },
       { "ts": "2026-11-17T23:23:50.000Z", "value": 24.9 },
@@ -161,7 +162,7 @@ Gabungan dari `GET /api/v1/dashboard`, `GET /api/v1/readings`, dan `GET /api/v1/
 }
 ```
 
-Catatan: `video_used_pct` di atas sengaja >100 untuk memperlihatkan state penuh; angka normal demo <100. `dashboard` tidak mengembalikan nama gardu — pakai label statis "Gardu Demo" atau omit.
+Catatan: `video_used_pct` di atas sengaja >100 untuk memperlihatkan state penuh; angka normal demo <100. `dashboard` tidak mengembalikan nama gardu — pakai label statis "Gardu Demo" atau omit. Chart arus Dashboard memakai `GET /api/v1/readings` dengan `bucket=900`; bar berwarna merah jika bucket tersebut tercantum di `anomaly_buckets` (event `CURRENT_ANOMALY_*` aktif), selainnya biru.
 
 ### 3.3 Inbox event
 
@@ -257,7 +258,7 @@ Respons `GET /api/v1/events/:id`.
 }
 ```
 
-Grafik di detail event memakai `GET /api/v1/readings?from=<context.from>&to=<context.to>&bucket=60` (rata-rata per 1 menit).
+Grafik di detail event memakai `GET /api/v1/readings?from=<context.from>&to=<context.to>&bucket=60` (rata-rata per 1 menit). Respons `anomaly_buckets` berisi bucket UTC yang memiliki event `CURRENT_ANOMALY_*` aktif (`open`/`acknowledged`); bucket tersebut ditampilkan merah di chart, selainnya biru.
 
 ### 3.5 Door log
 

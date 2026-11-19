@@ -12,6 +12,7 @@ use([CanvasRenderer, BarChart, LineChart, GridComponent, MarkLineComponent, Tool
 
 const props = defineProps<{
   points: ReadingPoint[]
+  anomalyBuckets?: string[]
   markerTs?: number | null
 }>()
 
@@ -45,8 +46,13 @@ const option = computed<EChartsOption>(() => {
   const muted = isDark.value ? '#6f7785' : '#8b929c'
   const accent = isDark.value ? '#6e7af7' : '#6572f4'
   const red = isDark.value ? '#f06a62' : '#e5534b'
-  const pairs = props.points.map(point => [Date.parse(point.ts), point.value] as [number, number])
-  const maxValue = pairs.length ? Math.max(...pairs.map(([, value]) => value)) : 0
+  const anomalyBuckets = new Set(props.anomalyBuckets ?? [])
+  const pairs = props.points.map(point => ({
+    ts: Date.parse(point.ts),
+    bucket: point.ts,
+    value: point.value,
+  }))
+  const maxValue = pairs.length ? Math.max(...pairs.map(point => point.value)) : 0
   const yMax = maxValue > 0 ? maxValue * 1.1 : 1
 
   return {
@@ -83,12 +89,12 @@ const option = computed<EChartsOption>(() => {
         name: t('chart.current'),
         type: 'bar',
         z: 2,
-        data: pairs.map(([timestamp, value]) => {
-          const isDrop = value < 5
+        data: pairs.map(point => {
+          const isAnomaly = anomalyBuckets.has(point.bucket)
           return {
-            value: [timestamp, value],
+            value: [point.ts, point.value],
             itemStyle: {
-              color: isDrop
+              color: isAnomaly
                 ? barGradient(
                     isDark.value ? 'rgba(240,106,98,0.42)' : 'rgba(229,83,75,0.38)',
                     isDark.value ? 'rgba(240,106,98,0.04)' : 'rgba(229,83,75,0.03)',
@@ -100,8 +106,8 @@ const option = computed<EChartsOption>(() => {
               borderRadius: [3, 3, 0, 0] as [number, number, number, number],
             },
             label: {
-              color: isDrop ? red : muted,
-              fontWeight: isDrop ? 600 : 500,
+              color: isAnomaly ? red : muted,
+              fontWeight: isAnomaly ? 600 : 500,
             },
           }
         }),
@@ -121,15 +127,18 @@ const option = computed<EChartsOption>(() => {
         name: t('chart.trend'),
         type: 'line',
         z: 3,
-        data: pairs.map(([timestamp, value]) => ({
-          value: [timestamp, value],
-          symbolSize: value < 5 ? 9 : 6,
-          itemStyle: {
-            color: value < 5 ? red : accent,
-            borderColor: '#ffffff',
-            borderWidth: 1.4,
-          },
-        })),
+        data: pairs.map(point => {
+          const isAnomaly = anomalyBuckets.has(point.bucket)
+          return {
+            value: [point.ts, point.value],
+            symbolSize: isAnomaly ? 9 : 6,
+            itemStyle: {
+              color: isAnomaly ? red : accent,
+              borderColor: '#ffffff',
+              borderWidth: 1.4,
+            },
+          }
+        }),
         showSymbol: true,
         smooth: false,
         lineStyle: { width: 2, color: isDark.value ? 'rgba(110,122,247,0.72)' : 'rgba(101,114,244,0.65)' },

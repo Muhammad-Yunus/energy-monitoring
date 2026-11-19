@@ -12,6 +12,7 @@ export interface ReadingsResponse {
   from: string
   to: string
   bucket_seconds: number
+  anomaly_buckets: string[]
   points: ReadingPoint[]
 }
 

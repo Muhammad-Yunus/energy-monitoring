@@ -426,7 +426,7 @@ function retry() {
             </div>
             <div class="em-chart-wrapper">
               <ClientOnly>
-                <CurrentChart :points="history.points" />
+                <CurrentChart :points="history.points" :anomaly-buckets="history.anomaly_buckets" />
               </ClientOnly>
             </div>
           </div>

@@ -364,7 +364,7 @@ async function applyAction(status: WorkflowStatus) {
               {{ t('detail.noContextReading') }}
             </div>
             <ClientOnly v-else>
-              <CurrentChart :points="context.points" :marker-ts="markerTs" />
+              <CurrentChart :points="context.points" :anomaly-buckets="context.anomaly_buckets" :marker-ts="markerTs" />
             </ClientOnly>
           </div>
         </section>
