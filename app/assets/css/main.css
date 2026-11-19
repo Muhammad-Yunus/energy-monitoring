@@ -4,7 +4,6 @@
 /* Design tokens — diselaraskan dengan mockup UI (guidance visual). */
 :root {
   color-scheme: light;
-  --em-outer: #242527;
   --em-bg: #dcdfe2;
   --em-gradient: radial-gradient(circle at 22% 45%, #d6d9dc 0%, #e4e6e8 55%, #dfe1e4 100%);
   --em-surface: rgba(244, 245, 247, 0.78);
@@ -37,7 +36,6 @@
 
 .dark {
   color-scheme: dark;
-  --em-outer: #3b444f;
   --em-bg: #1f242b;
   --em-gradient: radial-gradient(circle at 22% 45%, #2a3039 0%, #1c2026 55%, #1a1e24 100%);
   --em-surface: rgba(39, 44, 52, 0.82);
@@ -74,23 +72,14 @@ body {
 
 .em-page {
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: var(--em-outer);
+  background: var(--em-gradient);
   color: var(--em-text);
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .em-shell {
   width: 100%;
-  max-width: 1220px;
   padding: 20px 24px 24px;
-  border: 1px solid var(--em-border);
-  border-radius: 20px;
-  background: var(--em-gradient);
-  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
   position: relative;
 }
 
@@ -1527,8 +1516,7 @@ body {
 }
 
 @media (max-width: 680px) {
-  .em-page { padding: 10px; }
-  .em-shell { padding: 14px; border-radius: 14px; }
+  .em-shell { padding: 14px; }
   .em-header { gap: 10px; }
   .em-header-actions { width: 100%; justify-content: flex-start; }
   .em-body { grid-template-columns: 1fr; gap: 12px; }
