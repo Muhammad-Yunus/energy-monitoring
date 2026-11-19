@@ -595,7 +595,7 @@ body {
 .em-avg-icon {
   display: block;
   margin-bottom: 6px;
-  color: var(--em-blue);
+  color: var(--em-bg);
 }
 
 .em-avg-value {
