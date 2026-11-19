@@ -43,6 +43,7 @@ Edge contracts, idempotency, event statuses, and error/retry behavior are docume
 | corepack + pnpm | pnpm 12.21.0 | Package manager, enabled with `corepack enable` |
 | Docker Engine + Compose plugin | — | Runs PostgreSQL and RustFS |
 | FFmpeg / ffprobe | 7.1.5+ | Video validation, codec inspection, and thumbnails |
+| Avahi-daemon | — | Publishes `energy-monitoring.local` over mDNS for LAN clients |
 | Git | — | Clone the repository |
 
 All dependencies above run natively on the host; only the database and object storage run in Docker.
@@ -134,11 +135,13 @@ pnpm build
 pnpm preview
 ```
 
+For the always-on demo, systemd runs the production build with `node .output/server/index.mjs` and nginx serves it at `http://energy-monitoring.local/`; see [Deployment](#deployment).
+
 ### 6. Verify the demo
 
-- Dashboard: `http://localhost:3000`
+- Dashboard: `http://energy-monitoring.local/`
 - Login: `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`
-- Health check: `http://localhost:3000/api/health`
+- Health check: `http://energy-monitoring.local/api/health`
 - RustFS console: `http://localhost:9001/rustfs/console/`
 
 To generate initial data, open the dashboard and then run the simulator:
@@ -186,10 +189,12 @@ See [TECH_STACK.md](./TECH_STACK.md) and [docs/edge-api.md](./docs/edge-api.md) 
 ```mermaid
 flowchart LR
   E[Edge / Simulator] -- "HTTP + Bearer token" --> N[Nuxt 4 / Nitro :3000]
-  B[Browser] -- "HTTP + session cookie" --> N
+  B[Browser] -- "HTTP + session cookie" --> P[nginx :80]
+  P -- "Reverse proxy" --> N
   N -- "Drizzle / postgres.js" --> D[(PostgreSQL 17)]
   N -- "Internal S3 API" --> R[(RustFS :9000)]
-  N -- "SSE" --> B
+  N -- "SSE" --> P
+  P -- "SSE" --> B
   R -- "Presigned URL" --> B
 ```
 
@@ -203,6 +208,7 @@ server/utils/     Auth, SSE event bus, S3, retention, video finalization
 shared/schemas/   Shared Zod contracts for edge payloads
 drizzle/          Committed SQL migrations
 scripts/          Seed, storage init, and API simulator
+deploy/           systemd unit and nginx reverse-proxy config
 docs/             API docs, data model, and screenshots
 ```
 
@@ -210,7 +216,7 @@ The app uses SSE with an in-memory event bus (no Redis/WebSocket). Async process
 
 ## Deployment
 
-For the systemd service and nginx reverse-proxy setup at `http://energy-monitoring.local`, see [deploy/README.md](./deploy/README.md).
+The host setup installs `energy-monitoring.service` and an nginx reverse proxy that is the default server on both IPv4 and IPv6. Avahi publishes `energy-monitoring.local` over mDNS, so LAN clients need mDNS/Bonjour support to resolve the name. Full steps are in [deploy/README.md](./deploy/README.md).
 
 ---
 
