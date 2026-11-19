@@ -1,6 +1,27 @@
-# Energy Monitoring — Demo Single Gardu
+# Power House Monitoring Systems
+
+Real-time power monitoring at the edge.
+
+![Status](https://img.shields.io/badge/status-demo-orange)
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Nuxt](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)
+![Vue](https://img.shields.io/badge/Vue-3-4FC08D?logo=vue.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=node.js&logoColor=white)
+![Storage](https://img.shields.io/badge/storage-RustFS-6B46C1)
+![Realtime](https://img.shields.io/badge/realtime-SSE-6572F4)
 
 Aplikasi monitoring arus dan event untuk satu gardu PLN. Stack mengikuti [PRD.md](./PRD.md), [ADR.md](./ADR.md), dan [TECH_STACK.md](./TECH_STACK.md).
+
+<p align="center">
+  <a href="./docs/screen-capture/screen-1.png"><img src="./docs/screen-capture/screen-1.png" alt="Tampilan 1" width="49%"></a>
+  <a href="./docs/screen-capture/screen-2.png"><img src="./docs/screen-capture/screen-2.png" alt="Tampilan 2" width="49%"></a>
+</p>
+<p align="center">
+  <a href="./docs/screen-capture/screen-3.png"><img src="./docs/screen-capture/screen-3.png" alt="Tampilan 3" width="49%"></a>
+  <a href="./docs/screen-capture/screen-4.png"><img src="./docs/screen-capture/screen-4.png" alt="Tampilan 4" width="49%"></a>
+</p>
 
 ## Status
 
