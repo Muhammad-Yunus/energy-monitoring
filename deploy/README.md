@@ -66,7 +66,7 @@ Open `http://energy-monitoring.local/` in a browser and log in with `ADMIN_EMAIL
 
 ## Notes
 
-- nginx listens on port 80 and proxies to the app on `127.0.0.1:3000`; SSE is kept unbuffered.
+- nginx listens on port 80 on both IPv4 and IPv6 as the default server, and proxies to the app on `127.0.0.1:3000`; SSE is kept unbuffered. The bundled nginx `default` site is disabled so mDNS clients connecting over IPv6 do not land on the nginx welcome page.
 - HTTPS is out of scope for this LAN demo.
 - To update the service after changing the unit file, re-run step 4. To update nginx, re-run step 3.
 - Stop the old dev server (`pnpm dev`) before enabling the service, otherwise port 3000 is already taken.
