@@ -12,46 +12,46 @@ Real-time power monitoring at the edge.
 ![Storage](https://img.shields.io/badge/storage-RustFS-6B46C1)
 ![Realtime](https://img.shields.io/badge/realtime-SSE-6572F4)
 
-Aplikasi monitoring arus dan event untuk satu gardu PLN. Stack mengikuti [PRD.md](./PRD.md), [ADR.md](./ADR.md), dan [TECH_STACK.md](./TECH_STACK.md).
+Current and event monitoring application for a single PLN substation. The stack follows [PRD.md](./PRD.md), [ADR.md](./ADR.md), and [TECH_STACK.md](./TECH_STACK.md).
 
 <p align="center">
-  <a href="./docs/screen-capture/screen-1.png"><img src="./docs/screen-capture/screen-1.png" alt="Tampilan 1" width="49%"></a>
-  <a href="./docs/screen-capture/screen-2.png"><img src="./docs/screen-capture/screen-2.png" alt="Tampilan 2" width="49%"></a>
+  <a href="./docs/screen-capture/screen-1.png"><img src="./docs/screen-capture/screen-1.png" alt="Screenshot 1" width="49%"></a>
+  <a href="./docs/screen-capture/screen-2.png"><img src="./docs/screen-capture/screen-2.png" alt="Screenshot 2" width="49%"></a>
 </p>
 <p align="center">
-  <a href="./docs/screen-capture/screen-3.png"><img src="./docs/screen-capture/screen-3.png" alt="Tampilan 3" width="49%"></a>
-  <a href="./docs/screen-capture/screen-4.png"><img src="./docs/screen-capture/screen-4.png" alt="Tampilan 4" width="49%"></a>
+  <a href="./docs/screen-capture/screen-3.png"><img src="./docs/screen-capture/screen-3.png" alt="Screenshot 3" width="49%"></a>
+  <a href="./docs/screen-capture/screen-4.png"><img src="./docs/screen-capture/screen-4.png" alt="Screenshot 4" width="49%"></a>
 </p>
 
 ## Status
 
-Demo single gardu sudah lengkap:
+The single-substation demo is complete:
 
-- Login admin dengan session cookie dan proteksi halaman.
-- Ingest telemetry, event anomali/door, dan heartbeat via API edge dengan bearer token.
-- Dashboard live (SSE), histori arus, inbox event, event detail, dan door log.
-- Upload video multipart presigned ke RustFS, validasi SHA-256/ffprobe, playback, dan thumbnail.
-- Retensi otomatis, disk guard, status device, audit log, dan simulasi API-driven.
+- Admin login with session cookies and page protection.
+- Ingest telemetry, anomaly/door events, and heartbeats through the edge API with bearer tokens.
+- Live dashboard (SSE), current history, event inbox, event details, and door log.
+- Presigned multipart video uploads to RustFS, SHA-256/ffprobe validation, playback, and thumbnails.
+- Automatic retention, disk guard, device status, audit logs, and API-driven simulation.
 
-Kontrak edge, idempotensi, status event, dan error/retry ada di [docs/edge-api.md](./docs/edge-api.md).
+Edge contracts, idempotency, event statuses, and error/retry behavior are documented in [docs/edge-api.md](./docs/edge-api.md).
 
-## Kebutuhan Sistem
+## System Requirements
 
-| Dependency | Versi | Fungsi |
+| Dependency | Version | Purpose |
 |---|---|---|
-| Node.js | 22.23.5+ | Runtime Nuxt/Nitro dan script TypeScript |
-| corepack + pnpm | pnpm 12.21.0 | Package manager, diaktifkan dengan `corepack enable` |
-| Docker Engine + Compose plugin | — | Menjalankan PostgreSQL dan RustFS |
-| FFmpeg / ffprobe | 7.1.5+ | Validasi video, pemeriksaan codec, dan thumbnail |
-| Git | — | Clone repository |
+| Node.js | 22.23.5+ | Nuxt/Nitro runtime and TypeScript scripts |
+| corepack + pnpm | pnpm 12.21.0 | Package manager, enabled with `corepack enable` |
+| Docker Engine + Compose plugin | — | Runs PostgreSQL and RustFS |
+| FFmpeg / ffprobe | 7.1.5+ | Video validation, codec inspection, and thumbnails |
+| Git | — | Clone the repository |
 
-Semua dependency di atas berjalan native di host; hanya database dan object storage yang berjalan di Docker.
+All dependencies above run natively on the host; only the database and object storage run in Docker.
 
 ---
 
 ## Setup
 
-### 1. Clone dan siapkan environment
+### 1. Clone the repository and prepare the environment
 
 ```bash
 git clone https://github.com/Muhammad-Yunus/energy-monitoring.git
@@ -59,51 +59,51 @@ cd energy-monitoring
 cp .env.example .env
 ```
 
-Edit `.env` sebelum lanjut. Field yang wajib diperiksa:
+Edit `.env` before continuing. Fields that must be checked:
 
-| Field | Catatan |
+| Field | Notes |
 |---|---|
-| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Harus konsisten dengan `DATABASE_URL` |
-| `SESSION_SECRET` | Minimal 32 karakter acak |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Kredensial login dashboard |
-| `EDGE_SERIAL`, `EDGE_TOKEN` | Token device harus berformat `em_` + 64 karakter hex |
-| `S3_PUBLIC_ENDPOINT` | Pakai IP LAN yang bisa diakses browser/edge, bukan `127.0.0.1`, agar presigned URL berfungsi dari perangkat lain |
-| `NUXT_PUBLIC_APP_URL` | Placeholder URL aplikasi; opsional, belum direferensikan kode |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Must match `DATABASE_URL` |
+| `SESSION_SECRET` | At least 32 random characters |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Dashboard login credentials |
+| `EDGE_SERIAL`, `EDGE_TOKEN` | Device token must use the format `em_` followed by 64 hex characters |
+| `S3_PUBLIC_ENDPOINT` | Use a LAN IP reachable by the browser/edge, not `127.0.0.1`, so presigned URLs work from other devices |
+| `NUXT_PUBLIC_APP_URL` | Application URL placeholder; optional, not yet referenced by the code |
 
-Contoh membuat token device:
+Example of generating a device token:
 
 ```bash
 echo "em_$(openssl rand -hex 64)"
 ```
 
-Token asli dipakai simulator/edge dan hanya disimpan sebagai hash SHA-256 di database. Jangan commit `.env`.
+The raw token is used by the simulator/edge and is stored only as a SHA-256 hash in the database. Do not commit `.env`.
 
-### 2. Siapkan direktori data
+### 2. Prepare the data directories
 
 ```bash
 mkdir -p data/postgres data/rustfs data/rustfs-logs
 ```
 
-RustFS berjalan sebagai UID `1000`, jadi `data/rustfs` dan `data/rustfs-logs` harus writable oleh UID tersebut:
+RustFS runs as UID `1000`, so `data/rustfs` and `data/rustfs-logs` must be writable by that UID:
 
 ```bash
 sudo chown -R 1000:1000 data/rustfs data/rustfs-logs
 ```
 
-### 3. Jalankan database dan storage
+### 3. Start the database and storage
 
 ```bash
 docker compose up -d db rustfs
 docker compose ps
 ```
 
-Tunggu sampai healthcheck keduanya `healthy`. RustFS juga bisa dicek dengan:
+Wait until both health checks report `healthy`. RustFS can also be checked with:
 
 ```bash
 curl -fsS http://127.0.0.1:9000/health
 ```
 
-### 4. Install dependency aplikasi dan siapkan schema
+### 4. Install application dependencies and prepare the schema
 
 ```bash
 corepack enable
@@ -114,103 +114,103 @@ pnpm storage:init
 pnpm seed
 ```
 
-Penjelasan singkat:
+Brief explanation:
 
-- `pnpm db:generate` membuat file migrasi dari schema Drizzle.
-- `pnpm db:migrate` menerapkan migrasi ke PostgreSQL.
-- `pnpm storage:init` membuat bucket private `recordings` di RustFS.
-- `pnpm seed` membuat admin, site, device, sensor, dan kamera. Seed **tidak** membuat reading/event; data tersebut masuk lewat API edge atau simulator.
+- `pnpm db:generate` generates migration files from the Drizzle schema.
+- `pnpm db:migrate` applies migrations to PostgreSQL.
+- `pnpm storage:init` creates the private `recordings` bucket in RustFS.
+- `pnpm seed` creates the admin, site, device, sensors, and camera. The seed **does not** create readings/events; that data arrives through the edge API or the simulator.
 
-### 5. Jalankan aplikasi
+### 5. Run the application
 
 ```bash
 pnpm dev
 ```
 
-Untuk mode produksi:
+For production mode:
 
 ```bash
 pnpm build
 pnpm preview
 ```
 
-### 6. Verifikasi demo
+### 6. Verify the demo
 
 - Dashboard: `http://localhost:3000`
-- Login: `ADMIN_EMAIL` dan `ADMIN_PASSWORD` dari `.env`
+- Login: `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`
 - Health check: `http://localhost:3000/api/health`
 - RustFS console: `http://localhost:9001/rustfs/console/`
 
-Untuk menghasilkan data awal, buka dashboard lalu jalankan simulasi:
+To generate initial data, open the dashboard and then run the simulator:
 
 ```bash
 pnpm sim:demo
 ```
 
-Skenario lain: `pnpm sim:drop` (arus turun + pintu), `pnpm sim:surge`, `pnpm sim:door`, `pnpm sim:offline`.
+Other scenarios: `pnpm sim:drop` (current drop + door), `pnpm sim:surge`, `pnpm sim:door`, `pnpm sim:offline`.
 
 ---
 
 ## Database
 
-- **PostgreSQL 17** berjalan di Docker, bind ke `127.0.0.1:5432`, data di `data/postgres`.
-- Akses data memakai **Drizzle ORM** + `postgres.js`; schema ada di `server/db/schema.ts`, migrasi di `drizzle/`.
-- Tabel dibagi menjadi:
+- **PostgreSQL 17** runs in Docker, bound to `127.0.0.1:5432`, with data in `data/postgres`.
+- Data access uses **Drizzle ORM** + `postgres.js`; the schema is in `server/db/schema.ts` and migrations are in `drizzle/`.
+- Tables are grouped as follows:
   - Master: `sites`, `devices`, `sensors`, `cameras`, `users`.
-  - Telemetri dan event: `readings`, `events`, `audit_logs`.
-  - Video: `recordings`, `recording_uploads` (hanya metadata dan object key; file video tidak disimpan di database).
-- Semua waktu disimpan sebagai `timestamptz` UTC dan ditampilkan dalam `Asia/Jakarta`.
-- Idempotensi ingest: `(sensor_id, ts)` untuk `readings` dan `(device_id, event_uid)` untuk `events`.
-- Time-series memakai tabel biasa dengan agregasi `date_bin`; tanpa TimescaleDB atau partisi.
-- Retensi default: `readings` 30 hari, `events` 90 hari, `audit_logs` 90 hari, `recordings` 7 hari.
+  - Telemetry and events: `readings`, `events`, `audit_logs`.
+  - Video: `recordings`, `recording_uploads` (metadata and object keys only; video files are not stored in the database).
+- All timestamps are stored as UTC `timestamptz` and displayed in `Asia/Jakarta`.
+- Ingest idempotency: `(sensor_id, ts)` for `readings` and `(device_id, event_uid)` for `events`.
+- Time-series uses regular tables with `date_bin` aggregation; no TimescaleDB or partitioning.
+- Default retention: `readings` 30 days, `events` 90 days, `audit_logs` 90 days, `recordings` 7 days.
 
-Detail schema dan kontrak ada di [TECH_STACK.md](./TECH_STACK.md) dan [docs/ui-data-model.md](./docs/ui-data-model.md).
+Schema details and contracts are in [TECH_STACK.md](./TECH_STACK.md) and [docs/ui-data-model.md](./docs/ui-data-model.md).
 
 ---
 
 ## Storage
 
-- **RustFS 1.0.6** adalah object storage S3-compatible dengan bucket private `recordings`.
-- Port `9000` untuk S3 API dan `9001` untuk console.
-- Server memakai `S3_INTERNAL_ENDPOINT` (`http://127.0.0.1:9000`) untuk operasi internal; browser/edge menerima URL presigned dari `S3_PUBLIC_ENDPOINT` (IP LAN).
-- Upload video memakai **presigned S3 multipart** dengan part 5 MiB, batas 5 MB dan 30 detik per klip.
-- Setelah upload selesai, server memvalidasi SHA-256 dan `ffprobe`, lalu membuat thumbnail. Playback/thumbnail memakai redirect 302 ke URL presigned; bucket tidak diakses anonymous.
-- Retensi video 7 hari dengan batas total 1,5 GB. Disk guard menolak recording baru dengan HTTP `507` jika free disk di bawah 1 GB.
+- **RustFS 1.0.6** is an S3-compatible object store with a private `recordings` bucket.
+- Port `9000` for the S3 API and `9001` for the console.
+- The server uses `S3_INTERNAL_ENDPOINT` (`http://127.0.0.1:9000`) for internal operations; browsers/edge devices receive presigned URLs from `S3_PUBLIC_ENDPOINT` (LAN IP).
+- Video uploads use **presigned S3 multipart** with 5 MiB parts, a 5 MB limit, and a 30-second limit per clip.
+- After upload completes, the server validates SHA-256 and `ffprobe`, then creates a thumbnail. Playback/thumbnail use a 302 redirect to a presigned URL; the bucket does not allow anonymous access.
+- Video retention is 7 days with a 1.5 GB total cap. The disk guard rejects new recordings with HTTP `507` when free disk space is below 1 GB.
 
-Alur detail ada di [TECH_STACK.md](./TECH_STACK.md) dan [docs/edge-api.md](./docs/edge-api.md).
+See [TECH_STACK.md](./TECH_STACK.md) and [docs/edge-api.md](./docs/edge-api.md) for the detailed flow.
 
 ---
 
-## Arsitektur
+## Architecture
 
 ```mermaid
 flowchart LR
   E[Edge / Simulator] -- "HTTP + Bearer token" --> N[Nuxt 4 / Nitro :3000]
   B[Browser] -- "HTTP + session cookie" --> N
   N -- "Drizzle / postgres.js" --> D[(PostgreSQL 17)]
-  N -- "S3 API internal" --> R[(RustFS :9000)]
+  N -- "Internal S3 API" --> R[(RustFS :9000)]
   N -- "SSE" --> B
-  R -- "URL presigned" --> B
+  R -- "Presigned URL" --> B
 ```
 
-Struktur sumber:
+Source layout:
 
 ```text
-app/              UI Nuxt: pages, components, composables, i18n, styling
-server/api/       Endpoint user, edge, auth, dan health
-server/db/        Schema Drizzle dan koneksi database
-server/utils/     Auth, event bus SSE, S3, retensi, finalisasi video
-shared/schemas/   Kontrak Zod bersama untuk payload edge
-drizzle/          Migrasi SQL yang di-commit
-scripts/          Seed, init storage, dan simulator API
-docs/             Dokumentasi API, model data, dan screenshot
+app/              Nuxt UI: pages, components, composables, i18n, styling
+server/api/       User, edge, auth, and health endpoints
+server/db/        Drizzle schema and database connection
+server/utils/     Auth, SSE event bus, S3, retention, video finalization
+shared/schemas/   Shared Zod contracts for edge payloads
+drizzle/          Committed SQL migrations
+scripts/          Seed, storage init, and API simulator
+docs/             API docs, data model, and screenshots
 ```
 
-Aplikasi memakai SSE dengan in-memory event bus (tanpa Redis/WebSocket). Proses async dan scheduled task menangani finalisasi video serta retensi tanpa queue eksternal.
+The app uses SSE with an in-memory event bus (no Redis/WebSocket). Async processes and scheduled tasks handle video finalization and retention without an external queue.
 
 ---
 
-## Perintah
+## Commands
 
 ```bash
 pnpm dev
