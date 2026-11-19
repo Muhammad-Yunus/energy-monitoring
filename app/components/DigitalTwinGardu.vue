@@ -321,6 +321,11 @@ const criticalValue = computed(() => {
           <div class="em-seam-line" />
           <div class="em-seam-pill">
             <span class="em-seam-dot" style="background: var(--em-amber)" />
+            <svg class="em-seam-icon" style="color: var(--em-amber)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M2 21h20" stroke-linecap="round" />
+              <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="15" cy="12" r="1" />
+            </svg>
             <span>
               {{ tf('twin.doorOpenRow', { from: formatTime(doorEvent.occurred_at), to: formatTime(doorEvent.ended_at), duration: formatDuration(doorEvent.duration_ms) }) }}
             </span>
@@ -336,6 +341,9 @@ const criticalValue = computed(() => {
           <div class="em-seam-line" />
           <div class="em-seam-pill">
             <span class="em-seam-dot" style="background: var(--em-red)" />
+            <svg class="em-seam-icon" style="color: var(--em-red)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
             <span>
               {{ tf('twin.anomalyRow', { time: formatTime(criticalEvent.occurred_at, true), value: criticalValue }) }}
             </span>

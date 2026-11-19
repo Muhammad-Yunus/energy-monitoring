@@ -1067,6 +1067,12 @@ body {
   border-radius: 50%;
 }
 
+.em-seam-icon {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+
 .em-matrix-bar {
   display: flex;
   align-items: center;
