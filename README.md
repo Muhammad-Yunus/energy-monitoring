@@ -208,6 +208,10 @@ docs/             API docs, data model, and screenshots
 
 The app uses SSE with an in-memory event bus (no Redis/WebSocket). Async processes and scheduled tasks handle video finalization and retention without an external queue.
 
+## Deployment
+
+For the systemd service and nginx reverse-proxy setup at `http://energy-monitoring.local`, see [deploy/README.md](./deploy/README.md).
+
 ---
 
 ## Commands
