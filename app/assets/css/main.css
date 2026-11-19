@@ -414,6 +414,12 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  overflow: hidden;
+}
+
+.em-extraction-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .em-extraction-title {
@@ -611,9 +617,14 @@ body {
 }
 
 .em-avg-icon {
-  display: block;
-  margin-bottom: 6px;
+  position: absolute;
+  top: -42px;
+  right: -60px;
+  width: 270px;
+  height: 270px;
   color: var(--em-bg);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .em-avg-value {
@@ -661,6 +672,11 @@ body {
   position: relative;
   flex: 1;
   height: 186px;
+}
+
+.em-chart-wrapper > *:not(.em-avg-icon) {
+  position: relative;
+  z-index: 1;
 }
 
 /* Lists */
