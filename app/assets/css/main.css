@@ -182,27 +182,6 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--em-amber) 20%, transparent);
 }
 
-.em-theme-btn {
-  height: 34px;
-  padding: 0 12px;
-  border: 1px solid var(--em-pill-border);
-  border-radius: 999px;
-  background: var(--em-surface);
-  box-shadow: var(--em-shadow);
-  color: var(--em-text);
-  font-family: inherit;
-  font-size: 11.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.15s ease;
-}
-
-.em-theme-btn:hover {
-  background: var(--em-pill);
-  transform: translateY(-1px);
-}
-
 .em-icon-btn {
   width: 34px;
   height: 34px;
