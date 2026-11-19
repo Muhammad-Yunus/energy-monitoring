@@ -411,6 +411,9 @@ function retry() {
           </div>
           <div v-else class="em-extraction-body">
             <div class="em-avg-stat">
+              <svg class="em-avg-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
               <div class="em-avg-value">
                 {{ latest ? latest.value.toFixed(1) : '—' }}<span>mA</span>
               </div>
