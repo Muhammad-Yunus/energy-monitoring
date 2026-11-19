@@ -409,6 +409,76 @@ body {
   color: var(--em-text-muted);
 }
 
+/* Login — same design tokens as the dashboard */
+.em-login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.em-login-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 24px;
+}
+
+.em-login-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.em-login-head .em-brand-logo {
+  width: 34px;
+  height: 34px;
+}
+
+.em-login-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--em-text);
+}
+
+.em-login-sub {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: var(--em-text-muted);
+}
+
+.em-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.em-login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.em-login-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--em-text-secondary);
+}
+
+.em-login-field .em-input-control,
+.em-login-form .em-btn-primary {
+  width: 100%;
+  height: 38px;
+}
+
+.em-login-error {
+  margin: 0;
+  font-size: 11px;
+  color: var(--em-red);
+}
+
 .em-extraction-card {
   padding: 18px 20px 16px;
   display: flex;

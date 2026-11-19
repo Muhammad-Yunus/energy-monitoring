@@ -25,46 +25,62 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center p-4">
-    <UCard class="w-full max-w-sm">
-      <template #header>
-        <div class="space-y-1">
-          <h1 class="text-xl font-semibold">
+  <div class="em-page em-login-page">
+    <div class="em-card em-login-card">
+      <div class="em-login-head">
+        <svg class="em-brand-logo" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path
+            d="M16 3L27.2583 9.5V22.5L16 29L4.74167 22.5V9.5L16 3Z"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M17.2 8.5L11.5 16.5H16L14.8 23.5L20.5 15.5H16L17.2 8.5Z"
+            fill="currentColor"
+          />
+        </svg>
+        <div>
+          <h1 class="em-login-title">
             {{ t('login.title') }}
           </h1>
-          <p class="text-sm text-muted">
+          <p class="em-login-sub">
             {{ t('login.subtitle') }}
           </p>
         </div>
-      </template>
+      </div>
 
-      <form class="space-y-4" @submit.prevent="onSubmit">
-        <UAlert v-if="error" color="error" :title="error" />
+      <form class="em-login-form" @submit.prevent="onSubmit">
+        <p v-if="error" class="em-login-error">
+          {{ error }}
+        </p>
 
-        <UFormField :label="t('login.email')" name="email">
-          <UInput
+        <label class="em-login-field">
+          <span class="em-login-label">{{ t('login.email') }}</span>
+          <input
             v-model="email"
+            class="em-input-control"
             type="email"
             autocomplete="username"
             required
-            class="w-full"
-          />
-        </UFormField>
+          >
+        </label>
 
-        <UFormField :label="t('login.password')" name="password">
-          <UInput
+        <label class="em-login-field">
+          <span class="em-login-label">{{ t('login.password') }}</span>
+          <input
             v-model="password"
+            class="em-input-control"
             type="password"
             autocomplete="current-password"
             required
-            class="w-full"
-          />
-        </UFormField>
+          >
+        </label>
 
-        <UButton type="submit" block :loading="loading">
-          {{ t('login.submit') }}
-        </UButton>
+        <button class="em-btn-primary" type="submit" :disabled="loading">
+          {{ loading ? '…' : t('login.submit') }}
+        </button>
       </form>
-    </UCard>
+    </div>
   </div>
 </template>
