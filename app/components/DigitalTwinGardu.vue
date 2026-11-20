@@ -8,7 +8,6 @@ interface TimelineEvent {
   occurred_at: string
   ended_at: string | null
   duration_ms: number | null
-  details?: Record<string, unknown>
 }
 
 interface Props {
@@ -111,6 +110,14 @@ const recordingBorder = computed(() => {
   return ''
 })
 
+const TIMELINE_EVENT_TYPES = [
+  'CURRENT_ANOMALY_WARNING',
+  'CURRENT_ANOMALY_CRITICAL',
+  'CURRENT_ANOMALY_ZERO',
+  'DOOR_OPEN',
+  'DOOR_CLOSE',
+] as const
+
 const timelineRange = ref<ReadingRange>('5m')
 const now = ref(Date.now())
 const windowEnd = ref(Date.now())
@@ -144,10 +151,29 @@ function scrollForward() {
   windowEnd.value = Math.min(now.value, windowEnd.value + rangeMs.value)
 }
 
-const timelineEvents = computed(() => props.events
-  .filter(event => event.type.startsWith('DOOR_') || event.type.startsWith('CURRENT_ANOMALY_'))
-  .slice()
-  .sort((a, b) => Date.parse(a.occurred_at) - Date.parse(b.occurred_at)))
+const timelineQuery = computed(() => ({
+  type: [...TIMELINE_EVENT_TYPES],
+  from: new Date(windowStart.value).toISOString(),
+  to: new Date(windowEnd.value).toISOString(),
+}))
+const { data: windowEvents } = useFetch<{ items: TimelineEvent[] }>('/api/v1/events', {
+  key: 'timeline-window-events',
+  query: timelineQuery,
+  default: () => ({ items: [] }),
+})
+
+const timelineEvents = computed(() => {
+  const byId = new Map<string, TimelineEvent>()
+  for (const event of props.events) {
+    if (TIMELINE_EVENT_TYPES.includes(event.type as typeof TIMELINE_EVENT_TYPES[number])) {
+      byId.set(event.id, event)
+    }
+  }
+  for (const event of windowEvents.value?.items ?? []) {
+    byId.set(event.id, event)
+  }
+  return [...byId.values()].sort((a, b) => Date.parse(a.occurred_at) - Date.parse(b.occurred_at))
+})
 
 const visibleEvents = computed(() => timelineEvents.value.filter((event) => {
   const ts = Date.parse(event.occurred_at)
@@ -155,9 +181,15 @@ const visibleEvents = computed(() => timelineEvents.value.filter((event) => {
 }))
 
 const doorEvent = computed(() => visibleEvents.value.find(event => event.type === 'DOOR_OPEN'))
-const criticalEvent = computed(() => visibleEvents.value.find(
-  event => event.type === 'CURRENT_ANOMALY_CRITICAL' || event.type === 'CURRENT_ANOMALY_ZERO',
+const anomalyEvent = computed(() => visibleEvents.value.find(
+  event => event.type.startsWith('CURRENT_ANOMALY_'),
 ))
+const anomalyLevel = computed(() => {
+  const type = anomalyEvent.value?.type
+  if (type === 'CURRENT_ANOMALY_WARNING') return t('event.CURRENT_ANOMALY_WARNING')
+  if (type === 'CURRENT_ANOMALY_ZERO') return t('event.CURRENT_ANOMALY_ZERO')
+  return t('event.CURRENT_ANOMALY_CRITICAL')
+})
 
 const TICK_STEPS_MS = [
   60_000,
@@ -224,18 +256,12 @@ function eventPillStyle(event: TimelineEvent | undefined) {
 }
 
 const doorSpanStyle = computed(() => eventSpanStyle(doorEvent.value))
-const anomalySpanStyle = computed(() => eventSpanStyle(criticalEvent.value))
+const anomalySpanStyle = computed(() => eventSpanStyle(anomalyEvent.value))
 const doorPillStyle = computed(() => eventPillStyle(doorEvent.value))
-const anomalyPillStyle = computed(() => eventPillStyle(criticalEvent.value))
+const anomalyPillStyle = computed(() => eventPillStyle(anomalyEvent.value))
 
 const timelineLabels = computed(() => Array.from({ length: 5 }, (_, index) =>
   formatTime(new Date(windowStart.value + (rangeMs.value * index) / 4).toISOString())))
-
-const criticalValue = computed(() => {
-  const value = criticalEvent.value?.details?.value_a
-  if (typeof value === 'number') return value.toFixed(1)
-  return (props.currentValue ?? 0).toFixed(1)
-})
 </script>
 
 <template>
@@ -460,10 +486,10 @@ const criticalValue = computed(() => {
         </div>
 
         <div
-          v-if="criticalEvent && anomalySpanStyle"
+          v-if="anomalyEvent && anomalySpanStyle"
           class="em-seam-row em-seam-row--anomaly"
           :title="t('twin.openAnomalyTitle')"
-          @click="emit('select-event', criticalEvent.id)"
+          @click="emit('select-event', anomalyEvent.id)"
         >
           <div class="em-seam-line" :style="anomalySpanStyle" />
           <div class="em-seam-pill" :style="anomalyPillStyle">
@@ -472,7 +498,7 @@ const criticalValue = computed(() => {
               <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             <span class="em-seam-text">
-              {{ tf('twin.anomalyRow', { time: formatTime(criticalEvent.occurred_at, true), value: criticalValue }) }}
+              {{ tf('twin.anomalyRow', { level: anomalyLevel, time: formatTime(anomalyEvent.occurred_at, true) }) }}
             </span>
           </div>
         </div>
