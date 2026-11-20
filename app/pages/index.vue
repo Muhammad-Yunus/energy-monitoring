@@ -88,10 +88,14 @@ const { data: healthData, refresh: refreshHealth } = await useFetch<{ devices: D
 
 const deviceHealth = computed(() => healthData.value?.devices[0] ?? null)
 
-const range = ref<ReadingRange>('6h')
+const range = ref<ReadingRange>('1m')
 const { data: history, pending: historyPending, error: historyError, load: loadHistory } = useReadings(range)
 
 const rangeOptions = computed(() => [
+  { value: '1m' as const, label: t('dashboard.range.1m') },
+  { value: '5m' as const, label: t('dashboard.range.5m') },
+  { value: '10m' as const, label: t('dashboard.range.10m') },
+  { value: '30m' as const, label: t('dashboard.range.30m') },
   { value: '1h' as const, label: t('dashboard.range.1h') },
   { value: '6h' as const, label: t('dashboard.range.6h') },
   { value: '24h' as const, label: t('dashboard.range.24h') },

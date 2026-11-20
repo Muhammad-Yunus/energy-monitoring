@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
 
-export type ReadingRange = '1h' | '6h' | '24h'
+export type ReadingRange = '1m' | '5m' | '10m' | '30m' | '1h' | '6h' | '24h'
 
 export interface ReadingPoint {
   ts: string
@@ -17,12 +17,20 @@ export interface ReadingsResponse {
 }
 
 export const READING_RANGE_MS: Record<ReadingRange, number> = {
+  '1m': 60 * 1000,
+  '5m': 5 * 60 * 1000,
+  '10m': 10 * 60 * 1000,
+  '30m': 30 * 60 * 1000,
   '1h': 60 * 60 * 1000,
   '6h': 6 * 60 * 60 * 1000,
   '24h': 24 * 60 * 60 * 1000,
 }
 
-const PLOT_BUCKET_SECONDS = 15 * 60
+const PLOT_TARGET_POINTS = 60
+
+function plotBucketSeconds(value: ReadingRange) {
+  return Math.max(1, Math.round(READING_RANGE_MS[value] / 1000 / PLOT_TARGET_POINTS))
+}
 
 export function useReadings(range: Ref<ReadingRange>) {
   const { t } = useLocale()
@@ -45,12 +53,15 @@ export function useReadings(range: Ref<ReadingRange>) {
         query: {
           from: from.toISOString(),
           to: to.toISOString(),
-          bucket: PLOT_BUCKET_SECONDS,
+          bucket: plotBucketSeconds(range.value),
         },
       })
 
       if (id === requestId) {
-        data.value = response
+        data.value = {
+          ...response,
+          points: response.points.slice(-PLOT_TARGET_POINTS),
+        }
       }
     }
     catch (cause) {

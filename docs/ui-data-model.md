@@ -162,7 +162,7 @@ Gabungan dari `GET /api/v1/dashboard`, `GET /api/v1/readings`, dan `GET /api/v1/
 }
 ```
 
-Catatan: `video_used_pct` di atas sengaja >100 untuk memperlihatkan state penuh; angka normal demo <100. `dashboard` tidak mengembalikan nama gardu — pakai label statis "Gardu Demo" atau omit. Chart arus Dashboard memakai `GET /api/v1/readings` dengan `bucket=900`; bar berwarna merah jika bucket tersebut tercantum di `anomaly_buckets` (event `CURRENT_ANOMALY_*` aktif), selainnya biru.
+Catatan: `video_used_pct` di atas sengaja >100 untuk memperlihatkan state penuh; angka normal demo <100. `dashboard` tidak mengembalikan nama gardu — pakai label statis "Gardu Demo" atau omit. Chart arus Dashboard memakai `GET /api/v1/readings` dengan `bucket = rentang/60` detik (`1m→1`, `5m→5`, `10m→10`, `30m→30`, `1h→60`, `6h→360`, `24h→1440`); default `1m` tanpa agregasi pada telemetry 1 Hz. Bar berwarna merah jika bucket tersebut tercantum di `anomaly_buckets` (event `CURRENT_ANOMALY_*` aktif), selainnya biru.
 
 ### 3.3 Inbox event
 
@@ -291,7 +291,7 @@ Cukup tampilkan indikator "Live tersambung" + dot hijau, dan "Live terputus — 
   2. **Status device** — dot + `Online`/`Offline` + "terakhir dilihat …".
   3. **Status pintu** — `Terbuka`/`Tertutup`/`Tidak diketahui` + badge.
   4. **Event aktif** — jumlah event `open` + `acknowledged` (nilai turunan, bukan field API).
-- Grafik garis arus (sumbu X waktu, sumbu Y milliampere), dengan pemilih rentang `15 menit / 1 jam / 6 jam / 24 jam`.
+- Grafik batang + garis arus (sumbu X waktu, sumbu Y milliampere), dengan pemilih rentang `1 menit / 5 menit / 10 menit / 30 menit / 1 jam / 6 jam / 24 jam` (default 1 menit, maksimal 60 titik).
 - Panel samping: kartu info device (serial, firmware, config version), kartu storage (progress bar `video_used_pct`, `video_bytes / video_max_bytes`, jumlah recording, free disk), daftar status recording terbaru.
 - Tabel ringkas 5 event terbaru: waktu, tipe badge, severity badge, status badge.
 - Strip door timeline (titik waktu open/close).

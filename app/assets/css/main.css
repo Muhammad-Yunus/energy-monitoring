@@ -615,6 +615,8 @@ body {
 .em-pill-row {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
+  max-width: 100%;
   gap: 4px;
   padding: 3px;
   border: 1px solid var(--em-border);

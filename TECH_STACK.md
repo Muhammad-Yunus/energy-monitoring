@@ -258,17 +258,19 @@ group by 1
 order by 1;
 ```
 
-Rentang dan bucket (target maksimal ±2.000 titik per series):
+Preset rentang Dashboard (target 60 titik per series):
 
-| Range | Bucket | Perkiraan titik |
+| Preset | Bucket | Perkiraan titik |
 |---|---|---|
-| ≤1 jam | 5 detik | 720 |
-| ≤6 jam | 30 detik | 720 |
-| ≤24 jam | 1 menit | 1.440 |
-| ≤7 hari | 10 menit | 1.008 |
-| ≤30 hari | 30 menit | 1.440 |
+| 1 menit | 1 detik (tanpa agregasi pada telemetry 1 Hz) | 60 |
+| 5 menit | 5 detik | 60 |
+| 10 menit | 10 detik | 60 |
+| 30 menit | 30 detik | 60 |
+| 1 jam | 60 detik | 60 |
+| 6 jam | 360 detik | 60 |
+| 24 jam | 1440 detik | 60 |
 
-API memilih bucket terkecil yang membuat jumlah titik ≤2.000 untuk rentang yang diminta.
+Untuk query tanpa bucket eksplisit, API tetap memilih bucket terkecil dari `[5, 30, 60, 600, 1800]` detik yang menghasilkan ≤2.000 titik untuk rentang yang diminta (maksimal 30 hari). Grafik konteks detail event memakai bucket 60 detik tetap.
 
 ### 6.4 Migrasi dan Seed
 

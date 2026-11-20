@@ -158,7 +158,7 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 | FR-13 | Finalisasi video | P0 | Ukuran, SHA-256, dan ffprobe divalidasi; thumbnail dibuat; status `ready` |
 | FR-14 | Playback video | P0 | Video hanya dapat diputar oleh user login lewat signed URL |
 | FR-15 | Dashboard live | P0 | Reading, event, dan status recording muncul via SSE tanpa refresh |
-| FR-16 | Histori arus | P0 | Grafik 1 jam/6 jam/24 jam dengan downsampling server |
+| FR-16 | Histori arus | P0 | Grafik arus realtime 1 menit tanpa agregasi; preset 1/5/10/30 menit dan 1/6/24 jam dengan downsampling server, maksimal 60 titik per rentang |
 | FR-17 | Event inbox | P0 | Filter tipe/severity/status, cursor pagination |
 | FR-18 | Event detail | P0 | Grafik konteks, detail rule, video, door timeline, catatan |
 | FR-19 | Workflow event | P0 | Acknowledge, resolve, false positive, dan catatan tersimpan |
