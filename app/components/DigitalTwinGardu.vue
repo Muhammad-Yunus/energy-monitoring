@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { READING_RANGE_MS } from '~/composables/useReadings'
+import type { ReadingRange } from '~/composables/useReadings'
+
 interface TimelineEvent {
   id: string
   type: string
@@ -108,33 +111,125 @@ const recordingBorder = computed(() => {
   return ''
 })
 
-const doorEvent = computed(() => props.events.find(event => event.type === 'DOOR_OPEN'))
-const criticalEvent = computed(() => props.events.find(
-  event => event.type === 'CURRENT_ANOMALY_CRITICAL' || event.type === 'CURRENT_ANOMALY_ZERO',
-))
+const timelineRange = ref<ReadingRange>('5m')
+const now = ref(Date.now())
+const windowEnd = ref(Date.now())
+
+let clock: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  clock = setInterval(() => { now.value = Date.now() }, 1000)
+})
+onBeforeUnmount(() => {
+  if (clock) clearInterval(clock)
+})
+
+const rangeOptions = computed(() => [
+  { value: '1m' as const, label: t('dashboard.range.1m') },
+  { value: '5m' as const, label: t('dashboard.range.5m') },
+  { value: '10m' as const, label: t('dashboard.range.10m') },
+  { value: '30m' as const, label: t('dashboard.range.30m') },
+  { value: '1h' as const, label: t('dashboard.range.1h') },
+  { value: '6h' as const, label: t('dashboard.range.6h') },
+  { value: '24h' as const, label: t('dashboard.range.24h') },
+])
+const rangeMs = computed(() => READING_RANGE_MS[timelineRange.value])
+const windowStart = computed(() => windowEnd.value - rangeMs.value)
+const canScrollForward = computed(() => windowEnd.value < now.value - 1000)
+
+function scrollBack() {
+  windowEnd.value -= rangeMs.value
+}
+
+function scrollForward() {
+  windowEnd.value = Math.min(now.value, windowEnd.value + rangeMs.value)
+}
 
 const timelineEvents = computed(() => props.events
   .filter(event => event.type.startsWith('DOOR_') || event.type.startsWith('CURRENT_ANOMALY_'))
   .slice()
   .sort((a, b) => Date.parse(a.occurred_at) - Date.parse(b.occurred_at)))
 
-const timelineLabels = computed(() => {
-  const list = timelineEvents.value
-  if (!list.length) return Array.from({ length: 5 }, () => t('common.dash'))
+const visibleEvents = computed(() => timelineEvents.value.filter((event) => {
+  const ts = Date.parse(event.occurred_at)
+  return ts >= windowStart.value && ts <= windowEnd.value
+}))
 
-  const firstEvent = list[0]
-  const lastEvent = list[list.length - 1]
-  if (!firstEvent || !lastEvent) return Array.from({ length: 5 }, () => t('common.dash'))
+const doorEvent = computed(() => visibleEvents.value.find(event => event.type === 'DOOR_OPEN'))
+const criticalEvent = computed(() => visibleEvents.value.find(
+  event => event.type === 'CURRENT_ANOMALY_CRITICAL' || event.type === 'CURRENT_ANOMALY_ZERO',
+))
 
-  const first = Date.parse(firstEvent.occurred_at)
-  const last = Date.parse(lastEvent.occurred_at)
-  const span = last - first || 60 * 60 * 1000
+const TICK_STEPS_MS = [
+  60_000,
+  5 * 60_000,
+  15 * 60_000,
+  30 * 60_000,
+  60 * 60_000,
+  3 * 60 * 60_000,
+  6 * 60 * 60_000,
+  12 * 60 * 60_000,
+  24 * 60 * 60_000,
+]
 
-  return Array.from({ length: 5 }, (_, index) => {
-    const date = new Date(first + (span * index) / 4)
-    return formatTime(date.toISOString())
-  })
+function percentAt(ts: number) {
+  return Math.min(100, Math.max(0, ((ts - windowStart.value) / rangeMs.value) * 100))
+}
+
+const timelineTicks = computed(() => {
+  const step = TICK_STEPS_MS.find(candidate => rangeMs.value / candidate <= 12)
+    ?? TICK_STEPS_MS[TICK_STEPS_MS.length - 1]!
+
+  const ticks: { left: number, label: string }[] = []
+  for (let ts = Math.ceil(windowStart.value / step) * step; ts <= windowEnd.value; ts += step) {
+    ticks.push({ left: percentAt(ts), label: formatTime(new Date(ts).toISOString()) })
+  }
+
+  if (ticks.length < 2) {
+    ticks.length = 0
+    ticks.push(
+      { left: 0, label: formatTime(new Date(windowStart.value).toISOString()) },
+      { left: 100, label: formatTime(new Date(windowEnd.value).toISOString()) },
+    )
+  }
+
+  return ticks
 })
+
+function eventSpanStyle(event: TimelineEvent | undefined) {
+  if (!event) return undefined
+
+  const from = Date.parse(event.occurred_at)
+  const to = event.ended_at ? Date.parse(event.ended_at) : Number.NaN
+  if (Number.isNaN(from)) return undefined
+
+  const start = percentAt(from)
+  const end = Number.isNaN(to) ? Math.min(100, start + 2) : percentAt(to)
+  return {
+    left: `${Math.min(start, end)}%`,
+    width: `${Math.max(1.5, Math.abs(end - start))}%`,
+  }
+}
+
+function eventPillStyle(event: TimelineEvent | undefined) {
+  const span = eventSpanStyle(event)
+  if (!span) return undefined
+
+  const left = Number.parseFloat(span.left)
+  const width = Number.parseFloat(span.width)
+  const half = `max(${width / 2}%, 12px)`
+  return {
+    left: `clamp(${half}, ${Math.min(100, left + width / 2)}%, calc(100% - ${half}))`,
+    width: `clamp(24px, ${width}%, 60%)`,
+  }
+}
+
+const doorSpanStyle = computed(() => eventSpanStyle(doorEvent.value))
+const anomalySpanStyle = computed(() => eventSpanStyle(criticalEvent.value))
+const doorPillStyle = computed(() => eventPillStyle(doorEvent.value))
+const anomalyPillStyle = computed(() => eventPillStyle(criticalEvent.value))
+
+const timelineLabels = computed(() => Array.from({ length: 5 }, (_, index) =>
+  formatTime(new Date(windowStart.value + (rangeMs.value * index) / 4).toISOString())))
 
 const criticalValue = computed(() => {
   const value = criticalEvent.value?.details?.value_a
@@ -293,13 +388,45 @@ const criticalValue = computed(() => {
       </div>
     </div>
 
-    <section class="em-card">
+    <section class="em-card em-timeline-card">
       <div class="em-card-head">
         <h3 class="em-card-title">
           {{ t('twin.timelineTitle') }}
         </h3>
         <button class="em-pill-badge" type="button" @click="emit('navigate-door-log')">
           {{ t('twin.timelineLink') }}
+        </button>
+      </div>
+
+      <div class="em-timeline-controls">
+        <button
+          class="em-pill em-timeline-arrow"
+          type="button"
+          :aria-label="t('twin.timelineBack')"
+          @click="scrollBack"
+        >
+          ‹
+        </button>
+        <div class="em-pill-row">
+          <button
+            v-for="option in rangeOptions"
+            :key="option.value"
+            class="em-pill"
+            :class="{ 'is-active': timelineRange === option.value }"
+            type="button"
+            @click="timelineRange = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+        <button
+          class="em-pill em-timeline-arrow"
+          type="button"
+          :disabled="!canScrollForward"
+          :aria-label="t('twin.timelineForward')"
+          @click="scrollForward"
+        >
+          ›
         </button>
       </div>
 
@@ -313,38 +440,38 @@ const criticalValue = computed(() => {
         <div v-for="index in 5" :key="index" class="em-matrix-col-line" />
 
         <div
-          v-if="doorEvent"
+          v-if="doorEvent && doorSpanStyle"
           class="em-seam-row em-seam-row--door"
           :title="t('twin.openEventTitle')"
           @click="emit('select-event', doorEvent.id)"
         >
-          <div class="em-seam-line" />
-          <div class="em-seam-pill">
+          <div class="em-seam-line" :style="doorSpanStyle" />
+          <div class="em-seam-pill" :style="doorPillStyle">
             <span class="em-seam-dot" style="background: var(--em-amber)" />
             <svg class="em-seam-icon" style="color: var(--em-amber)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M2 21h20" stroke-linecap="round" />
               <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" stroke-linecap="round" stroke-linejoin="round" />
               <circle cx="15" cy="12" r="1" />
             </svg>
-            <span>
+            <span class="em-seam-text">
               {{ tf('twin.doorOpenRow', { from: formatTime(doorEvent.occurred_at), to: formatTime(doorEvent.ended_at), duration: formatDuration(doorEvent.duration_ms) }) }}
             </span>
           </div>
         </div>
 
         <div
-          v-if="criticalEvent"
+          v-if="criticalEvent && anomalySpanStyle"
           class="em-seam-row em-seam-row--anomaly"
           :title="t('twin.openAnomalyTitle')"
           @click="emit('select-event', criticalEvent.id)"
         >
-          <div class="em-seam-line" />
-          <div class="em-seam-pill">
+          <div class="em-seam-line" :style="anomalySpanStyle" />
+          <div class="em-seam-pill" :style="anomalyPillStyle">
             <span class="em-seam-dot" style="background: var(--em-red)" />
             <svg class="em-seam-icon" style="color: var(--em-red)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-            <span>
+            <span class="em-seam-text">
               {{ tf('twin.anomalyRow', { time: formatTime(criticalEvent.occurred_at, true), value: criticalValue }) }}
             </span>
           </div>
@@ -353,10 +480,16 @@ const criticalValue = computed(() => {
 
       <div class="em-matrix-bar">
         <div class="em-ticks-segment">
-          <span v-for="index in 12" :key="index" />
+          <span
+            v-for="(tick, index) in timelineTicks"
+            :key="index"
+            class="em-tick"
+            :style="{ left: `${tick.left}%` }"
+            :title="tick.label"
+          />
         </div>
-        <div class="em-amber-segment" :title="t('twin.doorCloseSegment')" />
-        <div class="em-blue-segment" :title="t('twin.ampSegment')" />
+        <div v-if="doorSpanStyle" class="em-amber-segment" :style="doorSpanStyle" :title="t('twin.doorCloseSegment')" />
+        <div v-if="anomalySpanStyle" class="em-blue-segment" :style="anomalySpanStyle" :title="t('twin.ampSegment')" />
       </div>
     </section>
   </div>

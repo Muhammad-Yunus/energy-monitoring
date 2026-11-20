@@ -294,7 +294,7 @@ Cukup tampilkan indikator "Live tersambung" + dot hijau, dan "Live terputus — 
 - Grafik batang + garis arus (sumbu X waktu, sumbu Y milliampere), dengan pemilih rentang `1 menit / 5 menit / 10 menit / 30 menit / 1 jam / 6 jam / 24 jam` (default 1 menit, maksimal 60 titik).
 - Panel samping: kartu info device (serial, firmware, config version), kartu storage (progress bar `video_used_pct`, `video_bytes / video_max_bytes`, jumlah recording, free disk), daftar status recording terbaru.
 - Tabel ringkas 5 event terbaru: waktu, tipe badge, severity badge, status badge.
-- Strip door timeline (titik waktu open/close).
+- Event Timeline: preset rentang `1 menit / 5 menit / 10 menit / 30 menit / 1 jam / 6 jam / 24 jam` (default 5 menit) dengan tombol mundur/maju; maju dibatasi waktu saat ini. Tick, label, garis event, dan segmen amber/biru diposisikan dari timestamp terhadap jendela aktif. Pill memakai lebar proporsional durasi dengan clamp; teks jadi elipsis atau disembunyikan (ikon saja) jika pill sempit. Sumber event adalah 10 event terbaru dari `GET /api/v1/dashboard`, jadi riwayat yang bisa ditelusuri dibatasi itu.
 
 ### 4.3 Inbox event
 - Bar filter: dropdown Status, dropdown Tipe, dropdown Severity, tombol "Reset". Opsi tanggal from/to boleh ada.
