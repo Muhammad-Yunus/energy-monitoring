@@ -72,7 +72,7 @@ Response `200`:
 
 ## GET /api/v1/edge/config
 
-Mengembalikan daftar sensor, kamera aktif, threshold, upload policy, dan `config_version` device.
+Mengembalikan daftar sensor, kamera aktif, threshold, upload policy, config `current_anomaly`, dan `config_version` device.
 
 Response `200`:
 
@@ -96,11 +96,50 @@ Response `200`:
     "part_size": 5242880,
     "max_file_bytes": 5242880,
     "max_duration_ms": 30000
+  },
+  "current_anomaly": {
+    "tamper_min_duration_ms": 3000,
+    "tamper_max_duration_ms": 900000,
+    "tamper_zero_threshold_ma": 10,
+    "tamper_step_change_percent": 50
   }
 }
 ```
 
-`thresholds` dan `upload` dibaca dari `devices.config`. Jika config tidak valid, server memakai default.
+`thresholds`, `upload`, dan `current_anomaly` dibaca dari `devices.config`. Jika config tidak valid atau `current_anomaly` belum ada, server memakai default. Edge memetakan field ini ke env `TAMPER_MIN_DURATION_MS`, `TAMPER_MAX_DURATION_MS`, `TAMPER_ZERO_THRESHOLD_MA`, dan `TAMPER_STEP_CHANGE_PCT`.
+
+### Endpoint terkait: `PATCH /api/v1/devices/:id/config`
+
+Endpoint user (session cookie, bukan token device) yang dipakai form di halaman Device Health & Storage. Hanya `current_anomaly` yang bisa diubah; field lain di `devices.config` tidak tersentuh.
+
+Request:
+
+```json
+{
+  "current_anomaly": {
+    "tamper_min_duration_ms": 3000,
+    "tamper_max_duration_ms": 900000,
+    "tamper_zero_threshold_ma": 10,
+    "tamper_step_change_percent": 50
+  }
+}
+```
+
+Response `200`:
+
+```json
+{
+  "config_version": 2,
+  "current_anomaly": {
+    "tamper_min_duration_ms": 3000,
+    "tamper_max_duration_ms": 900000,
+    "tamper_zero_threshold_ma": 10,
+    "tamper_step_change_percent": 50
+  }
+}
+```
+
+Validasi: `tamper_min_duration_ms` dan `tamper_max_duration_ms` bilangan bulat positif, `tamper_zero_threshold_ma` ≥ 0, `tamper_step_change_percent` antara 0–100. Payload tidak valid mengembalikan `422`. Setiap penyimpanan menaikkan `config_version` supaya edge tahu harus melakukan sync ulang.
 
 ## POST /api/v1/edge/telemetry
 

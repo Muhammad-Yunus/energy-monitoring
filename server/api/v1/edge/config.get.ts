@@ -67,5 +67,6 @@ export default defineEventHandler(async (event) => {
     cameras: cameraRows,
     thresholds: config.thresholds,
     upload: config.upload,
+    current_anomaly: config.current_anomaly,
   }
 })

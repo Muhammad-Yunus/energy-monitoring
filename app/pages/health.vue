@@ -1,9 +1,16 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'dashboard' })
 
-const { dateLocale, t } = useLocale()
+const { dateLocale, t, tf } = useLocale()
 
 useHead({ title: computed(() => `${t('nav.health')} · ${t('app.name')}`) })
+
+interface CurrentAnomalyConfig {
+  tamper_min_duration_ms: number
+  tamper_max_duration_ms: number
+  tamper_zero_threshold_ma: number
+  tamper_step_change_percent: number
+}
 
 interface DeviceHealth {
   id: string
@@ -12,6 +19,7 @@ interface DeviceHealth {
   last_seen_at: string | null
   firmware: string
   config_version: number
+  current_anomaly: CurrentAnomalyConfig
   door_state: 'open' | 'closed' | null
   health: {
     uptime_s: number | null
@@ -39,6 +47,42 @@ const { data, pending, error, refresh } = await useFetch<DevicesResponse>('/api/
 })
 
 const device = computed(() => data.value?.devices[0] ?? null)
+
+const form = reactive<CurrentAnomalyConfig>({
+  tamper_min_duration_ms: 3000,
+  tamper_max_duration_ms: 900000,
+  tamper_zero_threshold_ma: 10,
+  tamper_step_change_percent: 50,
+})
+const saving = ref(false)
+const savedVersion = ref<number | null>(null)
+const saveError = ref('')
+
+watch(device, (value) => {
+  if (value) Object.assign(form, value.current_anomaly)
+}, { immediate: true })
+
+async function saveConfig() {
+  if (!device.value) return
+  saving.value = true
+  saveError.value = ''
+  savedVersion.value = null
+  try {
+    const response = await $fetch<{ config_version: number }>(`/api/v1/devices/${device.value.id}/config`, {
+      method: 'PATCH',
+      body: { current_anomaly: { ...form } },
+    })
+    savedVersion.value = response.config_version
+    await refresh()
+  }
+  catch {
+    saveError.value = t('health.configError')
+  }
+  finally {
+    saving.value = false
+  }
+}
+
 const storagePct = computed(() => device.value?.storage.video_used_pct ?? 0)
 const storageColor = computed(() => {
   if (storagePct.value > 90) return 'var(--em-red)'
@@ -273,6 +317,47 @@ function formatDoorState(value: DeviceHealth['door_state']) {
           </div>
         </section>
       </div>
+
+      <section class="em-card">
+        <div class="em-card-head">
+          <h3 class="em-card-title">
+            {{ t('health.currentAnomalyTitle') }}
+          </h3>
+          <span class="em-pill-badge">v{{ device.config_version }}</span>
+        </div>
+        <p class="em-card-sub" style="margin-bottom: 12px;">
+          {{ t('health.currentAnomalyHint') }}
+        </p>
+        <form class="em-anomaly-form" @submit.prevent="saveConfig">
+          <label>
+            <span class="em-card-sub">{{ t('health.tamperMinDuration') }}</span>
+            <input v-model.number="form.tamper_min_duration_ms" class="em-input-control" type="number" min="1" step="1" required>
+          </label>
+          <label>
+            <span class="em-card-sub">{{ t('health.tamperMaxDuration') }}</span>
+            <input v-model.number="form.tamper_max_duration_ms" class="em-input-control" type="number" min="1" step="1" required>
+          </label>
+          <label>
+            <span class="em-card-sub">{{ t('health.tamperZeroThreshold') }}</span>
+            <input v-model.number="form.tamper_zero_threshold_ma" class="em-input-control" type="number" min="0" step="0.1" required>
+          </label>
+          <label>
+            <span class="em-card-sub">{{ t('health.tamperStepChange') }}</span>
+            <input v-model.number="form.tamper_step_change_percent" class="em-input-control" type="number" min="0" max="100" step="1" required>
+          </label>
+          <div class="em-anomaly-actions">
+            <button class="em-btn-primary" type="submit" :disabled="saving">
+              {{ saving ? t('health.saving') : t('health.saveConfig') }}
+            </button>
+            <span v-if="savedVersion !== null" class="em-badge em-badge--success">
+              {{ tf('health.configSaved', { version: savedVersion }) }}
+            </span>
+            <span v-if="saveError" class="em-badge em-badge--critical">
+              {{ saveError }}
+            </span>
+          </div>
+        </form>
+      </section>
     </template>
   </div>
 </template>

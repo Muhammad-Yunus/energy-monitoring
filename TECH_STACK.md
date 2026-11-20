@@ -320,7 +320,7 @@ Response:
 
 #### `GET /api/v1/edge/config`
 
-Response berisi sensor, camera, threshold, dan upload policy:
+Response berisi sensor, camera, threshold, upload policy, dan config `current_anomaly`:
 
 ```json
 {
@@ -341,6 +341,12 @@ Response berisi sensor, camera, threshold, dan upload policy:
     "part_size": 5242880,
     "max_file_bytes": 5242880,
     "max_duration_ms": 30000
+  },
+  "current_anomaly": {
+    "tamper_min_duration_ms": 3000,
+    "tamper_max_duration_ms": 900000,
+    "tamper_zero_threshold_ma": 10,
+    "tamper_step_change_percent": 50
   }
 }
 ```
@@ -550,7 +556,8 @@ Membatalkan multipart upload di S3 dan menandai recording `failed`.
 | PATCH | `/api/v1/events/:id` | Update status/catatan |
 | GET | `/api/v1/recordings/:id/playback` | 302 presigned GET |
 | GET | `/api/v1/recordings/:id/thumbnail` | 302 presigned GET |
-| GET | `/api/v1/devices` | Health device |
+| GET | `/api/v1/devices` | Health device + `current_anomaly` untuk prefill form |
+| PATCH | `/api/v1/devices/:id/config` | `{ current_anomaly }` → `devices.config`, `config_version +1` |
 | GET | `/api/v1/stream` | SSE |
 | GET | `/api/health` | `{ status, db, minio }` tanpa auth (field `minio` dipertahankan untuk kompatibilitas; pemeriksaannya ke RustFS) |
 

@@ -1550,6 +1550,26 @@ body {
   gap: 16px;
 }
 
+.em-anomaly-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.em-anomaly-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.em-anomaly-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .em-detail-head {
   display: flex;
   justify-content: space-between;

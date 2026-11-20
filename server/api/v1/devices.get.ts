@@ -1,4 +1,5 @@
 import { desc, sql } from 'drizzle-orm'
+import { DEFAULT_CURRENT_ANOMALY_CONFIG, edgeConfigSchema } from '#shared/schemas/edge'
 import { db } from '../../db'
 import { devices, recordings } from '../../db/schema'
 import { getSessionUser } from '../../utils/auth'
@@ -49,6 +50,7 @@ export default defineEventHandler(async (event) => {
 
   const videoBytes = Number(usage?.videoBytes ?? 0)
   const health = device.health
+  const parsedConfig = edgeConfigSchema.safeParse(device.config)
 
   return {
     server_time: now.toISOString(),
@@ -59,6 +61,9 @@ export default defineEventHandler(async (event) => {
       last_seen_at: device.lastSeenAt?.toISOString() ?? null,
       firmware: device.firmware,
       config_version: device.configVersion,
+      current_anomaly: parsedConfig.success
+        ? parsedConfig.data.current_anomaly
+        : DEFAULT_CURRENT_ANOMALY_CONFIG,
       door_state: device.doorState,
       health: {
         uptime_s: numberFrom(health.uptime_s),

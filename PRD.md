@@ -146,7 +146,7 @@ Prioritas: **P0** wajib untuk demo, **P1** penting tetapi bisa menyusul.
 | FR-01 | Login admin | P0 | Admin dapat login, session cookie aktif, halaman terproteksi |
 | FR-02 | Auth device | P0 | Request edge tanpa token valid ditolak 401 |
 | FR-03 | Heartbeat | P0 | `last_seen_at` diperbarui; balasan berisi server time dan config |
-| FR-04 | Config edge | P0 | Edge mendapat daftar sensor, camera, threshold, upload policy, dan `config_version` |
+| FR-04 | Config edge | P0 | Edge mendapat daftar sensor, camera, threshold, upload policy, config `current_anomaly`, dan `config_version` |
 | FR-05 | Ingest telemetry | P0 | Batch reading tervalidasi dan tersimpan; reading terbaru tampil ≤2 detik |
 | FR-06 | Idempotensi telemetry | P0 | Reading dengan `(sensor_id, ts)` sama tidak menghasilkan duplikat |
 | FR-07 | Ingest event anomali | P0 | Event START/END/UPDATE tersimpan; status investigasi tidak tertimpa edge |
@@ -243,7 +243,8 @@ Device offline **bukan** tipe event. Status offline diturunkan dari `devices.las
 | Method | Path | Fungsi |
 |---|---|---|
 | POST | `/api/v1/edge/heartbeat` | Status device dan sinkronisasi waktu |
-| GET | `/api/v1/edge/config` | Konfigurasi sensor, camera, threshold, upload policy, `config_version` |
+| GET | `/api/v1/edge/config` | Konfigurasi sensor, camera, threshold, upload policy, `current_anomaly`, `config_version` |
+| PATCH | `/api/v1/devices/:id/config` | Update config `current_anomaly` dari UI (user), menaikkan `config_version` |
 | POST | `/api/v1/edge/telemetry` | Batch reading |
 | POST | `/api/v1/edge/events` | Batch event anomali/door |
 | POST | `/api/v1/edge/recordings` | Membuat sesi upload |
@@ -307,7 +308,7 @@ Format error konsisten:
 | Events | Inbox dengan filter tipe/severity/status, badge severity/status, pagination |
 | Event detail | Grafik ±10 menit, detail rule, video, door timeline, aksi dan catatan |
 
-Tidak ada halaman Settings. Last seen, firmware, config version, dan storage ditampilkan di dashboard serta endpoint `/api/v1/devices`; threshold dan retensi dikonfigurasi lewat environment, bukan UI.
+Tidak ada halaman Settings umum. Last seen, firmware, config version, dan storage ditampilkan di dashboard serta endpoint `/api/v1/devices`; threshold dan retensi dikonfigurasi lewat environment, bukan UI. Pengecualian demo: halaman Device Health & Storage memiliki form untuk mengubah config `current_anomaly` (`tamper_min_duration_ms`, `tamper_max_duration_ms`, `tamper_zero_threshold_ma`, `tamper_step_change_percent`). Perubahan disimpan di `devices.config` dan menaikkan `config_version`; edge mengambilnya dengan pull saat GET `/api/v1/edge/config`.
 
 ### 12.2 Perilaku
 
@@ -408,7 +409,7 @@ Catatan: metrik di atas adalah target demo yang diukur manual saat smoke test; b
 - SSO/LDAP dan RBAC lengkap.
 - Audit dan retensi lanjutan.
 - Integrasi SCADA/APKT.
-- OTA/config push ke edge.
+- OTA firmware dan config push ke edge. (`current_anomaly` tidak di-push; edge melakukan pull lewat GET `/api/v1/edge/config`.)
 
 ### Fase 4 — Produksi
 

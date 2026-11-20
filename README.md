@@ -32,8 +32,9 @@ The single-substation demo is complete:
 - Live dashboard (SSE), current history, event inbox, event details, and door log.
 - Presigned multipart video uploads to RustFS, SHA-256/ffprobe validation, playback, and thumbnails.
 - Automatic retention, disk guard, device status, audit logs, and API-driven simulation.
+- Editable `current_anomaly` detection params in **Device Health & Storage**; saving bumps `config_version` and the edge pulls them from `GET /api/v1/edge/config`.
 
-Edge contracts, idempotency, event statuses, and error/retry behavior are documented in [docs/edge-api.md](./docs/edge-api.md).
+Edge contracts, idempotency, event statuses, error/retry behavior, and the `current_anomaly` config contract are documented in [docs/edge-api.md](./docs/edge-api.md).
 
 ## System Requirements
 

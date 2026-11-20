@@ -22,9 +22,26 @@ export const uploadPolicySchema = z.object({
   max_duration_ms: z.number().int().positive(),
 })
 
+export const currentAnomalyConfigSchema = z.object({
+  tamper_min_duration_ms: z.number().int().positive(),
+  tamper_max_duration_ms: z.number().int().positive(),
+  tamper_zero_threshold_ma: z.number().nonnegative(),
+  tamper_step_change_percent: z.number().min(0).max(100),
+})
+
+export type CurrentAnomalyConfig = z.infer<typeof currentAnomalyConfigSchema>
+
+export const DEFAULT_CURRENT_ANOMALY_CONFIG: CurrentAnomalyConfig = {
+  tamper_min_duration_ms: 3000,
+  tamper_max_duration_ms: 900000,
+  tamper_zero_threshold_ma: 10,
+  tamper_step_change_percent: 50,
+}
+
 export const edgeConfigSchema = z.object({
   thresholds: thresholdsSchema,
   upload: uploadPolicySchema,
+  current_anomaly: currentAnomalyConfigSchema.default(DEFAULT_CURRENT_ANOMALY_CONFIG),
 })
 
 export type EdgeConfig = z.infer<typeof edgeConfigSchema>
@@ -40,6 +57,7 @@ export const DEFAULT_EDGE_CONFIG: EdgeConfig = {
     max_file_bytes: 5242880,
     max_duration_ms: 30000,
   },
+  current_anomaly: DEFAULT_CURRENT_ANOMALY_CONFIG,
 }
 
 export const telemetryReadingSchema = z.object({

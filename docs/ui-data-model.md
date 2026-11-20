@@ -322,6 +322,7 @@ Cukup tampilkan indikator "Live tersambung" + dot hijau, dan "Live terputus — 
 - Kartu health: uptime, disk free, queue depth, daftar `sensor_status` (key → value), received at.
 - Kartu storage: progress bar persentase, angka bytes yang dibaca manusia (MB/GB), jumlah recording, free/total disk.
 - Warna progress: hijau <70%, kuning 70–90%, merah >90%.
+- Kartu Config Anomali Arus: form 4 field (`tamper_min_duration_ms`, `tamper_max_duration_ms`, `tamper_zero_threshold_ma`, `tamper_step_change_percent`) yang diisi dari `current_anomaly` pada `GET /api/v1/devices`. Tombol simpan memanggil `PATCH /api/v1/devices/:id/config`, menaikkan `config_version`, lalu refresh data.
 
 ## 5. State yang harus ikut dibuat di mockup
 
@@ -336,10 +337,10 @@ Cukup tampilkan indikator "Live tersambung" + dot hijau, dan "Live terputus — 
 
 - Multi-gardu / multi-tenant / pilihan lokasi.
 - Tiga fasa R/S/T, tegangan, daya, kWh, billing.
-- Deteksi anomali di server, setting threshold di UI.
+- Deteksi anomali di server (deteksi tetap di edge). Pengecualian: form `current_anomaly` di halaman Health, bukan threshold arus/door umum.
 - Live streaming CCTV/RTSP (yang ada hanya video 10 detik).
 - Notifikasi WhatsApp/email, laporan PDF/Excel, SSO.
-- Halaman Settings, backup, audit log viewer, manajemen user.
+- Halaman Settings umum (kecuali form `current_anomaly` di Health), backup, audit log viewer, manajemen user.
 - Tombol "Resume upload" (demo hanya status + abort).
 - Angka atau label yang tidak ada di contoh data di atas.
 
